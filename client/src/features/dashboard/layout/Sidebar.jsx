@@ -30,7 +30,7 @@ const Sidebar = ({ isSidebarOpen, isSidebarCollapsed, setIsSidebarOpen }) => {
   /* ── Menu Definitions ── */
   const baseMenuItems = [
     { id: '/dashboard', label: 'Home', icon: FiHome, color: 'icon-sky' },
-    { id: '/dashboard/profile', label: 'My Profile', icon: FiUser, color: 'icon-violet' },
+    { id: '/dashboard/account-settings', label: 'Account Settings', icon: FiUser, color: 'icon-violet' },
     { id: '/dashboard/basic', label: 'Basic Setting', icon: FiSettings, color: 'icon-amber' },
     {
       id: 'recharge_management', label: 'Payment', icon: FiCreditCard, color: 'icon-emerald',
