@@ -1,5 +1,6 @@
 import User from '../models/User.mjs';
 import Transaction from '../models/Transaction.mjs';
+import { webhookQueue } from '../services/webhookQueue.mjs';
 import { 
     initiatePayIn, 
     initiatePayOut, 
@@ -14,7 +15,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 /**
- * Utility to send webhook to the Merchant
+ * Utility to send webhook to the Merchant (Queued)
  */
 export const sendWebhookToMerchant = async (merchant, transaction) => {
     if (!merchant.callbackUrl) return;
@@ -28,30 +29,26 @@ export const sendWebhookToMerchant = async (merchant, transaction) => {
             timestamp: new Date().toISOString()
         };
 
-        // Save payload
+        // Save payload initially
         transaction.webhookPayload = payload;
+        transaction.webhookStatus = 'pending_retry'; // indicating it is queued
+        await transaction.save();
 
-        // Create a signature using the merchant's webhook secret
-        const signature = crypto.createHmac('sha256', merchant.webhookSecret || 'default_secret')
-            .update(JSON.stringify(payload))
-            .digest('hex');
-
-        const response = await axios.post(merchant.callbackUrl, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Signature': signature
-            },
-            timeout: 5000 // 5 seconds timeout
+        // Enqueue the job for reliable delivery with 3 retries
+        await webhookQueue.add('send-webhook', {
+            transactionId: transaction._id,
+            merchantId: merchant._id,
+            payload
+        }, {
+            attempts: 3,
+            backoff: {
+                type: 'exponential',
+                delay: 5000 // 5s, 10s, 20s
+            }
         });
         
-        transaction.webhookStatus = 'sent';
-        transaction.webhookResponse = response.data;
-        await transaction.save();
     } catch (error) {
-        transaction.webhookStatus = 'failed';
-        transaction.webhookResponse = error.response?.data || error.message;
-        await transaction.save();
-        console.error('Merchant Webhook Failed:', error.message);
+        console.error('Failed to enqueue webhook:', error.message);
     }
 };
 

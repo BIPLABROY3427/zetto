@@ -213,7 +213,7 @@ export const resendWebhook = async (req, res) => {
 
     res.status(200).json({ 
       success: true, 
-      message: `Webhook sent with status: ${transaction.webhookStatus}`,
+      message: `Webhook queued for delivery. Status: ${transaction.webhookStatus}`,
       webhookStatus: transaction.webhookStatus,
       webhookResponse: transaction.webhookResponse
     });

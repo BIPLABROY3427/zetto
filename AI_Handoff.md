@@ -252,11 +252,6 @@ Instead of redefining CSS for every page, you **MUST** use the global design sys
 
 > **UI/UX Redesign is 100% COMPLETE AND FROZEN. DO NOT MODIFY EXISTING UI.** All pages use the new `.pg-*` light theme. The following are functional/backend features still to be implemented:
 
-### 1. BasicSetting Page (UI Incomplete)
-- The `BasicSetting.jsx` page currently only shows a placeholder. It needs to be built out with:
-  - Webhook URL input + test button
-  - API Key display + regenerate button
-  - Use the `pg-*` design system classes.
 
 ### 2. Webhook Retry Mechanism
 - **Plan:** BullMQ / Redis retry queue (3 retries, exponential backoff).

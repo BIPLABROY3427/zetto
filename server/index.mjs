@@ -8,6 +8,7 @@ import http from "http";
 import moment from "moment-timezone";
 
 import Config from "./config/config.mjs";
+import "./services/webhookQueue.mjs";
 
 const PORT = process.env.PORT || 5872;
 
