@@ -1,0 +1,549 @@
+import User from '../models/User.mjs';
+import Transaction from '../models/Transaction.mjs';
+import { 
+    initiatePayIn, 
+    initiatePayOut, 
+    verifySignature,
+    queryUpstreamPayIn,
+    queryUpstreamPayOut,
+    upstreamBalance,
+    upstreamUtrCheck,
+    upstreamUpiCheck
+} from '../services/aeropayService.mjs';
+import axios from 'axios';
+import crypto from 'crypto';
+
+/**
+ * Utility to send webhook to the Merchant
+ */
+export const sendWebhookToMerchant = async (merchant, transaction) => {
+    if (!merchant.callbackUrl) return;
+
+    try {
+        const payload = {
+            transactionId: transaction.transactionId,
+            status: transaction.status,
+            amount: transaction.amount,
+            type: transaction.type,
+            timestamp: new Date().toISOString()
+        };
+
+        // Save payload
+        transaction.webhookPayload = payload;
+
+        // Create a signature using the merchant's webhook secret
+        const signature = crypto.createHmac('sha256', merchant.webhookSecret || 'default_secret')
+            .update(JSON.stringify(payload))
+            .digest('hex');
+
+        const response = await axios.post(merchant.callbackUrl, payload, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Signature': signature
+            },
+            timeout: 5000 // 5 seconds timeout
+        });
+        
+        transaction.webhookStatus = 'sent';
+        transaction.webhookResponse = response.data;
+        await transaction.save();
+    } catch (error) {
+        transaction.webhookStatus = 'failed';
+        transaction.webhookResponse = error.response?.data || error.message;
+        await transaction.save();
+        console.error('Merchant Webhook Failed:', error.message);
+    }
+};
+
+/**
+ * @desc    Create a payment intent (Pay-In) via AeroPay
+ * @route   POST /api/v1/gateway/payment
+ * @access  Private (API Key)
+ */
+export const createPaymentIntent = async (req, res) => {
+    try {
+        const { amount, customerDetails, description } = req.body;
+        const merchant = req.user;
+
+        if (!amount || amount < 200) {
+            return res.status(400).json({ success: false, message: 'Minimum amount is 200 INR' });
+        }
+
+        if (merchant.isPayinEnabled === false) {
+            return res.status(403).json({ success: false, message: 'Payin service is disabled for your account. Please contact support.' });
+        }
+
+        // Generate unique order ID
+        const orderNo = `PAY_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        
+        // Calculate commission (Percentage + Flat)
+        const payinSettings = merchant.commission?.payin || { percent: 5, flat: 0 };
+        const commissionAmount = (amount * (payinSettings.percent / 100)) + payinSettings.flat;
+        const netAmount = amount - commissionAmount;
+
+        // Create pending transaction
+        const newTransaction = await Transaction.create({
+            merchantId: merchant._id,
+            transactionId: orderNo,
+            type: 'payment',
+            amount: netAmount,
+            commissionAmount,
+            status: 'pending',
+            customerDetails,
+            description: description || 'Payment received'
+        });
+
+        // Call AeroPay
+        const aeroResponse = await initiatePayIn(orderNo, amount);
+
+        if (aeroResponse.code === 0 && aeroResponse.data?.code_url) {
+            // Update transaction with gateway order ID and explicit URL
+            newTransaction.gatewayOrderId = aeroResponse.data.orderNo || orderNo; // Sometime gateway generates its own
+            newTransaction.paymentUrl = aeroResponse.data.code_url;
+            newTransaction.gatewayResponse = aeroResponse;
+            await newTransaction.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Payment intent created',
+                paymentUrl: aeroResponse.data.code_url,
+                transactionId: orderNo
+            });
+        } else {
+            // Gateway rejected
+            newTransaction.status = 'failed';
+            newTransaction.gatewayResponse = aeroResponse;
+            await newTransaction.save();
+            return res.status(500).json({ success: false, message: 'Gateway rejected the payment request' });
+        }
+    } catch (error) {
+        console.error('Create Payment Intent Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create payment' });
+    }
+};
+
+/**
+ * @desc    AeroPay Pay-In Webhook Callback
+ * @route   POST /api/v1/gateway/aeropay/callback
+ * @access  Public
+ */
+export const aeroPayInCallback = async (req, res) => {
+    try {
+        const payload = req.body;
+        const incomingSign = payload.sign;
+
+        // Verify signature
+        if (!verifySignature(payload, incomingSign)) {
+            return res.status(400).send('invalid signature');
+        }
+
+        const { orderNo, orderState, amount } = payload;
+        
+        // Find transaction
+        const transaction = await Transaction.findOne({ transactionId: orderNo });
+        if (!transaction) {
+            return res.status(404).send('order not found');
+        }
+
+        // Idempotency check
+        if (transaction.status === 'completed') {
+            return res.status(200).send('success');
+        }
+
+        // orderState mapping: 1 = Success, 2,4 = Failed
+        if (String(orderState) === '1') {
+            transaction.status = 'completed';
+            
+            // Atomically update merchant balance
+            const merchant = await User.findOneAndUpdate(
+                { _id: transaction.merchantId },
+                { 
+                    $inc: { 
+                        walletBalance: transaction.amount, 
+                        totalReceived: Number(amount)
+                    } 
+                },
+                { new: true }
+            );
+
+            await transaction.save();
+
+            // Fire webhook to merchant
+            if (merchant) {
+                // Background async
+                sendWebhookToMerchant(merchant, transaction);
+            }
+            
+            return res.status(200).send('success');
+        } else if (String(orderState) === '2' || String(orderState) === '4') {
+            transaction.status = 'failed';
+            await transaction.save();
+            
+            const merchant = await User.findById(transaction.merchantId);
+            if (merchant) sendWebhookToMerchant(merchant, transaction);
+            
+            return res.status(200).send('success'); // ACK the webhook
+        }
+
+        // Pending states
+        return res.status(200).send('success');
+    } catch (error) {
+        console.error('AeroPay Callback Error:', error);
+        res.status(500).send('server error');
+    }
+};
+
+/**
+ * @desc    Create a payout intent (Withdrawal) via AeroPay
+ * @route   POST /api/v1/gateway/payout
+ * @access  Private (API Key)
+ */
+export const createPayoutIntent = async (req, res) => {
+    try {
+        const { amount, bankDetails, description } = req.body;
+        const merchant = req.user;
+
+        if (!amount || amount < 100) {
+            return res.status(400).json({ success: false, message: 'Minimum withdrawal is 100 INR' });
+        }
+
+        if (merchant.isPayoutEnabled === false) {
+            return res.status(403).json({ success: false, message: 'Payout service is disabled for your account. Please contact support.' });
+        }
+        
+        if (!bankDetails || !bankDetails.accountNumber || !bankDetails.ifscCode) {
+            return res.status(400).json({ success: false, message: 'Complete bank details are required' });
+        }
+
+        // Calculate commission (Percentage + Flat)
+        const payoutSettings = merchant.commission?.payout || { percent: 2, flat: 0 };
+        const payoutFee = (Number(amount) * (payoutSettings.percent / 100)) + payoutSettings.flat;
+        const totalDeduction = Number(amount) + payoutFee;
+
+        // Check frozen amount
+        const frozenAmt = merchant.frozenAmount || 0;
+        if ((merchant.walletBalance - frozenAmt) < totalDeduction) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Insufficient available balance. Note: Some of your funds may be frozen by the administrator.' 
+            });
+        }
+
+        // Atomically deduct balance
+        const updatedMerchant = await User.findOneAndUpdate(
+            { _id: merchant._id, walletBalance: { $gte: totalDeduction } },
+            { 
+                $inc: { 
+                    walletBalance: -totalDeduction,
+                    totalWithdrawals: Number(amount)
+                } 
+            },
+            { new: true }
+        );
+
+        if (!updatedMerchant) {
+            return res.status(400).json({ success: false, message: 'Insufficient balance' });
+        }
+
+        // Generate unique order ID
+        const orderNo = `POUT_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+        const newTransaction = await Transaction.create({
+            merchantId: merchant._id,
+            transactionId: orderNo,
+            type: 'withdrawal',
+            amount: amount,
+            commissionAmount: payoutFee,
+            status: 'pending',
+            customerDetails: bankDetails, // Save bank details here
+            description: description || 'Payout request'
+        });
+
+        // Call AeroPay
+        try {
+            const aeroResponse = await initiatePayOut(orderNo, amount, bankDetails);
+            
+            if (aeroResponse.code === 0) {
+                newTransaction.gatewayResponse = aeroResponse;
+                await newTransaction.save();
+                return res.status(200).json({ success: true, message: 'Payout initiated successfully', transactionId: orderNo });
+            } else {
+                throw new Error("Gateway rejected payout");
+            }
+        } catch (aeroError) {
+            // Revert balance if gateway fails immediately
+            await User.updateOne(
+                { _id: merchant._id },
+                { 
+                    $inc: { 
+                        walletBalance: totalDeduction,
+                        totalWithdrawals: -Number(amount)
+                    } 
+                }
+            );
+            newTransaction.status = 'failed';
+            newTransaction.description = 'Failed at gateway initiation';
+            await newTransaction.save();
+            return res.status(500).json({ success: false, message: 'Gateway failed to initiate payout. Amount refunded.' });
+        }
+    } catch (error) {
+        console.error('Create Payout Intent Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create payout' });
+    }
+};
+
+/**
+ * @desc    AeroPay Pay-Out Webhook Callback
+ * @route   POST /api/v1/gateway/aeropay/payoutcallback
+ * @access  Public
+ */
+export const aeroPayOutCallback = async (req, res) => {
+    try {
+        const payload = req.body;
+        const incomingSign = payload.sign;
+
+        if (!verifySignature(payload, incomingSign)) {
+            return res.status(400).send('invalid signature');
+        }
+
+        const { orderNo, orderState, amount } = payload;
+        
+        const transaction = await Transaction.findOne({ transactionId: orderNo });
+        if (!transaction) return res.status(404).send('order not found');
+        if (transaction.status !== 'pending') return res.status(200).send('success');
+
+        if (String(orderState) === '1') {
+            transaction.status = 'completed';
+            await transaction.save();
+            
+            const merchant = await User.findById(transaction.merchantId);
+            if (merchant) sendWebhookToMerchant(merchant, transaction);
+            
+            return res.status(200).send('success');
+        } else if (String(orderState) === '2' || String(orderState) === '4') {
+            // Failed -> Refund
+            transaction.status = 'failed';
+            await transaction.save();
+
+            const refundAmount = transaction.amount + transaction.commissionAmount;
+            
+            const merchant = await User.findOneAndUpdate(
+                { _id: transaction.merchantId },
+                { 
+                    $inc: { 
+                        walletBalance: refundAmount,
+                        totalWithdrawals: -transaction.amount
+                    } 
+                },
+                { new: true }
+            );
+
+            if (merchant) sendWebhookToMerchant(merchant, transaction);
+            return res.status(200).send('success');
+        }
+
+        return res.status(200).send('success');
+    } catch (error) {
+        console.error('AeroPay Payout Callback Error:', error);
+        res.status(500).send('server error');
+    }
+};
+
+/**
+ * @desc    Query Pay-In Order Status
+ * @route   GET /api/v1/gateway/payin/query?orderNo=...
+ * @access  Private (API Key)
+ */
+export const queryPayinOrder = async (req, res) => {
+    try {
+        const { orderNo } = req.query;
+        if (!orderNo) return res.status(400).json({ success: false, message: 'orderNo is required' });
+
+        const transaction = await Transaction.findOne({ transactionId: orderNo, merchantId: req.user._id });
+        if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' });
+
+        // Optionally, check upstream if pending
+        if (transaction.status === 'pending') {
+            try {
+                const upstreamStatus = await queryUpstreamPayIn(orderNo);
+                // Can update local status here if upstream says completed, omitted for brevity
+                return res.status(200).json({ success: true, localStatus: transaction.status, upstreamData: upstreamStatus });
+            } catch (err) {
+                // Ignore upstream error and just return local
+            }
+        }
+
+        res.status(200).json({ success: true, status: transaction.status, amount: transaction.amount });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+/**
+ * @desc    Query Pay-Out Order Status
+ * @route   GET /api/v1/gateway/payout/query?orderNo=...
+ * @access  Private (API Key)
+ */
+export const queryPayoutOrder = async (req, res) => {
+    try {
+        const { orderNo } = req.query;
+        if (!orderNo) return res.status(400).json({ success: false, message: 'orderNo is required' });
+
+        const transaction = await Transaction.findOne({ transactionId: orderNo, merchantId: req.user._id });
+        if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' });
+
+        if (transaction.status === 'pending') {
+            try {
+                const upstreamStatus = await queryUpstreamPayOut(orderNo);
+                return res.status(200).json({ success: true, localStatus: transaction.status, upstreamData: upstreamStatus });
+            } catch (err) { }
+        }
+
+        res.status(200).json({ success: true, status: transaction.status, amount: transaction.amount });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+/**
+ * @desc    Get Merchant Zetto Wallet Balance
+ * @route   GET /api/v1/gateway/balance
+ * @access  Private (API Key)
+ */
+export const getMerchantBalance = async (req, res) => {
+    try {
+        const merchant = req.user;
+        res.status(200).json({
+            success: true,
+            balance: merchant.walletBalance,
+            currency: 'INR'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+/**
+ * @desc    Check UTR validity (Pass-through)
+ * @route   POST /api/v1/gateway/utrcheck
+ * @access  Private (API Key)
+ */
+export const checkUtr = async (req, res) => {
+    try {
+        const { utr } = req.body;
+        if (!utr) return res.status(400).json({ success: false, message: 'UTR is required' });
+
+        const upstreamRes = await upstreamUtrCheck(utr);
+        res.status(200).json({ success: true, data: upstreamRes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to verify UTR' });
+    }
+};
+
+/**
+ * @desc    Check UPI validity (Pass-through)
+ * @route   POST /api/v1/gateway/upicheck
+ * @access  Private (API Key)
+ */
+export const checkUpi = async (req, res) => {
+    try {
+        const { upi } = req.body;
+        if (!upi) return res.status(400).json({ success: false, message: 'UPI ID is required' });
+
+        const upstreamRes = await upstreamUpiCheck(upi);
+        res.status(200).json({ success: true, data: upstreamRes });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to verify UPI' });
+    }
+};
+
+/**
+ * @desc    Get Superadmin System Health (Upstream Balance & Total Volume)
+ * @route   GET /api/v1/gateway/system/health
+ * @access  Private (SuperAdmin)
+ */
+export const getSystemHealth = async (req, res) => {
+    try {
+        // Only allow superadmin
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({ success: false, message: 'Unauthorized access' });
+        }
+
+        // 1. Fetch real upstream balance from AeroPay
+        let upstreamData = { balance: 0, status: 'error' };
+        try {
+            const aeroBal = await upstreamBalance();
+            if (aeroBal.code === 0) {
+                upstreamData = {
+                    balance: aeroBal.data?.balance || 0,
+                    status: 'online'
+                };
+            }
+        } catch (err) {
+            console.error('Failed to fetch upstream balance', err.message);
+        }
+
+        // 2. Aggregate local system volume (Today)
+        const now = new Date();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const startOfYesterday = new Date(startOfDay);
+        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+
+        const aggregateVolumeToday = await Transaction.aggregate([
+            {
+                $match: {
+                    status: 'completed',
+                    createdAt: { $gte: startOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: "$type",
+                    totalAmount: { $sum: "$amount" },
+                    totalCommission: { $sum: "$commissionAmount" },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const aggregateVolumeYesterday = await Transaction.aggregate([
+            {
+                $match: {
+                    status: 'completed',
+                    createdAt: { $gte: startOfYesterday, $lt: startOfDay }
+                }
+            },
+            {
+                $group: {
+                    _id: "$type",
+                    totalAmount: { $sum: "$amount" },
+                    totalCommission: { $sum: "$commissionAmount" },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const formatMetrics = (aggData) => {
+            let payins = { amount: 0, commission: 0, count: 0 };
+            let payouts = { amount: 0, commission: 0, count: 0 };
+            aggData.forEach(item => {
+                if (item._id === 'payment') payins = { amount: item.totalAmount, commission: item.totalCommission, count: item.count };
+                else if (item._id === 'withdrawal') payouts = { amount: item.totalAmount, commission: item.totalCommission, count: item.count };
+            });
+            return { payins, payouts };
+        };
+
+        res.status(200).json({
+            success: true,
+            upstream: upstreamData,
+            todayMetrics: formatMetrics(aggregateVolumeToday),
+            yesterdayMetrics: formatMetrics(aggregateVolumeYesterday)
+        });
+
+    } catch (error) {
+        console.error('System Health Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch system health' });
+    }
+};

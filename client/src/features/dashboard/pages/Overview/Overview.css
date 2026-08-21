@@ -1,0 +1,317 @@
+.overview-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page-header {
+  margin-bottom: 1rem;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  padding: 1.5rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.stat-title {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Text Colors */
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444; }
+
+/* Data Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 1rem;
+  text-align: center; /* Centered based on screenshots */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.data-table td {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.currency-badge {
+  background-color: #f1f5f9;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.operate-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.action-btn:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.action-btn.text-danger {
+  color: var(--primary);
+}
+
+/* Badges */
+.badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-danger {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-warning {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.status-badge.open {
+  border: 1px solid #10b981;
+  color: #10b981;
+}
+
+.status-badge.close {
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+}
+
+/* API Key & Forms */
+.api-key-section {
+  padding: 1rem 0;
+}
+
+.api-key-row {
+  display: flex;
+  gap: 3rem;
+  margin-bottom: 1rem;
+}
+
+.api-key-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  min-width: 100px;
+}
+
+.api-key-value {
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.stat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.ratio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 1rem;
+}
+
+.ratio-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.ratio-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ratio-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ratio-stat-item .ratio-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.ratio-stat-item .ratio-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ratio-stat-item .ratio-value.success {
+  color: #10b981; /* Green */
+}
+
+/* Pure CSS Circular Progress Bar using conic-gradient */
+.circular-chart {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+}
+
+.circular-chart::before {
+  content: "";
+  position: absolute;
+  inset: 10px; /* Thickness of the ring */
+  background: var(--bg-panel);
+  border-radius: 50%;
+}
+
+.circular-chart-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.circular-chart-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.circular-chart-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .ratio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Form Settings */
+.merchant-settings-form {
+  max-width: 800px;
+}
+
+.form-group.row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.col-label {
+  width: 150px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.col-input {
+  flex: 1;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  outline: none;
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+}
+
+.form-actions {
+  margin-left: 150px; /* Align with input */
+}
+
+.chart-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+}

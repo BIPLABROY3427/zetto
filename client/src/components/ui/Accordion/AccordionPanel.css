@@ -1,0 +1,73 @@
+.accordion-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  /* Remove border radius to match screenshot which has sharp/flat look, or keep slight radius */
+  border-radius: 4px;
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  user-select: none;
+  background-color: #fafafa;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.2s;
+}
+
+.accordion-panel.open .accordion-header {
+  border-bottom-color: var(--border-color);
+  background-color: var(--bg-panel);
+}
+
+.accordion-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.accordion-icon {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.accordion-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.accordion-toggle {
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accordion-content-wrapper {
+  background: var(--bg-panel);
+}
+
+.accordion-content {
+  padding: 1.5rem;
+  color: var(--text-secondary);
+  animation: fadeInDown 0.3s ease forwards;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
