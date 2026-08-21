@@ -1,45 +1,43 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../../../services/apiClient';
+import { FiSearch, FiRefreshCw, FiArrowUpRight, FiRotateCw } from 'react-icons/fi';
 import './PayoutHistory.css';
+
+const statusClass = (s) => {
+  if (s === 'completed' || s === 'sent' || s === 'success') return 'pg-status pg-status-completed';
+  if (s === 'pending') return 'pg-status pg-status-pending';
+  return 'pg-status pg-status-failed';
+};
 
 const PayoutHistory = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Filters
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('completed');
+  const [status, setStatus] = useState('all');
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/dashboard/transactions', {
-        params: { type: 'withdrawal', search, status }
-      });
-      setData(res.data.data);
-    } catch (err) {
-      toast.error('Failed to fetch Payin Orders');
+      const res = await api.get('/dashboard/transactions', { params: { type: 'withdrawal', search, status } });
+      setData(res.data.data || []);
+    } catch {
+      toast.error('Failed to fetch Payout History');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [status]); // refetch on status change
+  useEffect(() => { fetchTransactions(); }, [status]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchTransactions();
-  };
+  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
 
   const handleResendWebhook = async (id) => {
     try {
       const res = await api.post(`/dashboard/transactions/${id}/resend-webhook`, {}, { hideErrorToast: true });
       if (res.data.success) {
         toast.success(`Webhook resent! Status: ${res.data.webhookStatus}`);
-        fetchTransactions(); // Refresh status
+        fetchTransactions();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to resend webhook');
@@ -47,81 +45,72 @@ const PayoutHistory = () => {
   };
 
   return (
-    <div className="payment-page">
-      <div className="payment-filters">
-        <form onSubmit={handleSearch} className="filter-form">
-          <input
-            type="text"
-            placeholder="Search Order No..."
-            className="form-control"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="form-control"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">All States</option>
+    <div className="pg-root">
+      <div className="pg-toolbar">
+        <form className="pg-filters" onSubmit={handleSearch}>
+          <div className="pouth-search-wrap">
+            <FiSearch className="pouth-search-icon" />
+            <input type="text" className="pg-input pouth-search-input"
+              placeholder="Search order ID..." value={search}
+              onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
           </select>
-          <button type="submit" className="btn-primary">Query</button>
+          <button type="submit" className="pg-btn pg-btn-secondary"><FiSearch /> Search</button>
+          <button type="button" className="pg-btn pg-btn-secondary" onClick={fetchTransactions}><FiRefreshCw /></button>
         </form>
       </div>
 
-      <div className="table-container">
-        {loading ? (
-          <div className="loading-spinner">Loading Data...</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order No</th>
-                <th>Amount</th>
-                <th>Currency</th>
-                <th>Order State</th>
-                <th>Webhook</th>
-                <th>Time</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
-                <tr><td colSpan="8" className="text-center">No Data</td></tr>
-              ) : (
-                data.map(tx => (
+      <div className="pg-card">
+        <div className="pg-card-header">
+          <h4 className="pg-card-title">
+            <span className="pg-card-title-icon"><FiArrowUpRight /></span>
+            Payout History
+          </h4>
+          <span className="pouth-count">{data.length} records</span>
+        </div>
+        <div className="pg-table-wrap">
+          {loading ? (
+            <div className="pg-loading"><FiRefreshCw /> Loading...</div>
+          ) : (
+            <table className="pg-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Amount</th>
+                  <th>Currency</th>
+                  <th>Status</th>
+                  <th>Webhook</th>
+                  <th>Date & Time</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr><td colSpan="7"><div className="pg-empty"><p>No history found</p></div></td></tr>
+                ) : data.map(tx => (
                   <tr key={tx._id}>
-                    <td>{tx.transactionId}</td>
-                    <td>{tx.amount}</td>
-                    <td><span className="currency-badge">INR</span></td>
+                    <td className="pouth-id">{tx.transactionId}</td>
+                    <td className="pouth-amount">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td><span className="pg-badge pg-badge-inr">INR</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.webhookStatus || 'pending')}>{tx.webhookStatus || 'pending'}</span></td>
+                    <td className="pouth-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td>
-                      <span className={`status-badge ${tx.status === 'completed' ? 'open' : 'close'}`}>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${tx.webhookStatus === 'sent' ? 'open' : (tx.webhookStatus === 'failed' ? 'close' : 'pending')}`}>
-                        {tx.webhookStatus || 'pending'}
-                      </span>
-                    </td>
-                    <td>{new Date(tx.createdAt).toLocaleString()}</td>
-                    <td>
-                      <button
-                        className="btn-primary"
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => handleResendWebhook(tx._id)}
-                      >
-                        Resend Webhook
+                      <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => handleResendWebhook(tx._id)}>
+                        <FiRotateCw /> Resend
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );

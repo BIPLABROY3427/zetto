@@ -1,63 +1,109 @@
+/* ================================================
+   TABS BAR — Light Theme, Production Ready
+   Browser-style tabs, clean and minimal
+   ================================================ */
+
 .tabs-bar-container {
   display: flex;
-  align-items: center;
-  background-color: #ffffff;
+  align-items: flex-end;
+  background: #fff;
   border-bottom: 1px solid var(--border-color);
-  padding: 0.25rem 1rem 0;
-  gap: 0.5rem;
+  padding: 0 1rem;
+  gap: 2px;
   overflow-x: auto;
+  flex-shrink: 0;
+  min-height: 42px;
 }
 
+/* Hide scrollbar on desktop, allow scroll */
 .tabs-bar-container::-webkit-scrollbar {
-  height: 4px;
+  height: 3px;
 }
 
 .tabs-bar-container::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 4px;
+  background: #e2e8f0;
+  border-radius: 3px;
 }
 
+.tabs-bar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Individual Tab ── */
 .tab-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background-color: #f8fafc;
+  gap: 0.45rem;
+  padding: 0.5rem 0.875rem;
+  background: #f8fafc;
   border: 1px solid var(--border-color);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--text-secondary);
-  transition: all 0.2s ease;
-  min-width: max-content;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
   position: relative;
-  top: 1px;
+  bottom: -1px;          /* Sit on top of the bottom border */
+  user-select: none;
+  max-width: 180px;
+}
+
+.tab-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tab-item:hover {
-  background-color: #f1f5f9;
+  background: #f0f4ff;
+  color: var(--text-primary);
 }
 
+/* ── Active Tab ── */
 .tab-item.active {
-  background-color: var(--bg-main);
+  background: #fff;
   color: var(--primary);
   border-color: var(--border-color);
   border-top: 2px solid var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+  /* Active tab fully merges with the page below by covering the border */
+  border-bottom: 1px solid #fff;
 }
 
+/* ── Close Button ── */
 .tab-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
   color: #94a3b8;
+  transition: background 0.12s, color 0.12s;
 }
 
 .tab-close:hover {
-  background-color: #e2e8f0;
+  background: #e2e8f0;
   color: #ef4444;
+}
+
+.tab-item.active .tab-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Mobile: smaller tabs ── */
+@media (max-width: 600px) {
+  .tab-item {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.65rem;
+    max-width: 130px;
+  }
+  .tabs-bar-container {
+    padding: 0 0.5rem;
+  }
 }

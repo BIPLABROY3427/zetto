@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import './RolesAndPermissions.css';
 import api from '../../../../services/apiClient';
 import { toast } from 'react-toastify';
-import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiShield, FiX, FiRefreshCw } from 'react-icons/fi';
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog/ConfirmDialog';
+import useConfirm from '../../../../components/ui/ConfirmDialog/useConfirm';
 
-// The modules available in our payment gateway system
 const MODULES = [
   'Dashboard Overview',
   'Payin Management',
@@ -16,33 +17,27 @@ const MODULES = [
   'Developer Settings'
 ];
 
+const ACTIONS = ['view', 'create', 'edit', 'delete'];
+
 const RolesAndPermissions = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { confirm, confirmProps } = useConfirm();
 
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
-  
-  // Form State
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    permissions: {}
-  });
 
-  useEffect(() => {
-    fetchRoles();
-  }, []);
+  const [formData, setFormData] = useState({ name: '', description: '', permissions: {} });
+
+  useEffect(() => { fetchRoles(); }, []);
 
   const fetchRoles = async () => {
     try {
       setLoading(true);
       const { data } = await api.get('/roles');
       setRoles(data.roles || []);
-    } catch (error) {
-      console.error('Error fetching roles:', error);
+    } catch {
       toast.error('Failed to load roles');
     } finally {
       setLoading(false);
@@ -52,40 +47,22 @@ const RolesAndPermissions = () => {
   const openCreateModal = () => {
     setIsEdit(false);
     setSelectedRoleId(null);
-    setFormData({
-      name: '',
-      description: '',
-      permissions: MODULES.reduce((acc, mod) => {
-        acc[mod] = { view: false, create: false, edit: false, delete: false };
-        return acc;
-      }, {})
-    });
+    setFormData({ name: '', description: '', permissions: {} });
     setIsModalOpen(true);
   };
 
   const openEditModal = (role) => {
     setIsEdit(true);
     setSelectedRoleId(role._id);
-    
-    // Ensure all modules exist in permissions object
-    const perms = { ...role.permissions };
-    MODULES.forEach(mod => {
-      if (!perms[mod]) {
-        perms[mod] = { view: false, create: false, edit: false, delete: false };
-      }
-    });
-
     setFormData({
       name: role.name,
       description: role.description || '',
-      permissions: perms
+      permissions: role.permissions || {}
     });
     setIsModalOpen(true);
   };
 
-  const closePermissionModal = () => {
-    setIsModalOpen(false);
-  };
+  const closeModal = () => setIsModalOpen(false);
 
   const handleCheckboxChange = (module, action) => {
     setFormData(prev => ({
@@ -100,204 +77,248 @@ const RolesAndPermissions = () => {
     }));
   };
 
+  const handleSelectAll = (module) => {
+    const allChecked = ACTIONS.every(a => formData.permissions[module]?.[a]);
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [module]: allChecked
+          ? {}
+          : Object.fromEntries(ACTIONS.map(a => [a, true]))
+      }
+    }));
+  };
+
   const handleSaveRole = async (e) => {
     e.preventDefault();
-
     try {
       if (isEdit) {
         await api.put(`/roles/${selectedRoleId}`, formData);
         toast.success('Role updated successfully!');
       } else {
-        await api.post(`/roles`, formData);
+        await api.post('/roles', formData);
         toast.success('Role created successfully!');
       }
       fetchRoles();
-      closePermissionModal();
-    } catch (error) {
-      console.error('Error saving role:', error);
-      toast.error(error.response?.data?.message || 'Failed to save role');
+      closeModal();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save role');
     }
   };
 
-  const handleDeleteRole = async (roleId) => {
-    if (!window.confirm("Are you sure you want to delete this role?")) return;
+  const handleDeleteRole = async (roleId, roleName) => {
+    const ok = await confirm({
+      title: 'Delete Role?',
+      message: `Delete "${roleName}"? This may affect users assigned to this role.`,
+      confirmText: 'Delete Role',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await api.delete(`/roles/${roleId}`);
-      toast.success('Role deleted successfully!');
+      toast.success('Role deleted!');
       fetchRoles();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete role');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete role');
     }
   };
 
-  if (loading) {
-    return <div className="loading-spinner">Loading roles...</div>;
-  }
+  // Count how many permissions are active for a role
+  const permCount = (role) => {
+    if (!role.permissions) return 0;
+    return Object.values(role.permissions).reduce((sum, mod) =>
+      sum + Object.values(mod).filter(Boolean).length, 0
+    );
+  };
 
   return (
-    <div className="payment-page">
-      <div className="payment-filters" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <>
+    <div className="pg-root">
+
+      {/* Toolbar */}
+      <div className="pg-toolbar">
         <div>
-          <h3 style={{ margin: 0, color: '#1e293b' }}>Roles & Permissions</h3>
-          <p style={{ color: '#64748b', fontSize: '14px', margin: '4px 0 0 0' }}>Define access levels for each staff role</p>
+          <h3 className="rp-heading">Roles & Permissions</h3>
+          <p className="rp-sub">Define access levels for each staff role</p>
         </div>
-        <button className="btn-primary" onClick={openCreateModal} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FiPlus /> Create Role
-        </button>
+        <div className="pg-actions">
+          <button className="pg-btn pg-btn-secondary" onClick={fetchRoles}>
+            <FiRefreshCw />
+          </button>
+          <button className="pg-btn pg-btn-primary" onClick={openCreateModal}>
+            <FiPlus /> Create Role
+          </button>
+        </div>
       </div>
 
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ROLE NAME</th>
-              <th>DESCRIPTION</th>
-              <th>MEMBERS</th>
-              <th style={{ textAlign: 'right' }}>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roles.map(role => (
-              <tr key={role._id}>
-                <td style={{ fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '24px', height: '24px', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
-                    ⛨
-                  </div>
-                  {role.name}
-                </td>
-                <td style={{ color: '#64748b' }}>{role.description || '-'}</td>
-                <td style={{ fontWeight: 500 }}>{role.members || 0}</td>
-                <td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                    {!role.isSystem && (
-                      <>
-                        <button 
-                          onClick={() => openEditModal(role)}
-                          style={{ padding: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
-                        >
-                          <FiEdit size={14} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteRole(role._id)}
-                          style={{ padding: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', color: '#ef4444' }}
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
-                      </>
-                    )}
-                    {role.isSystem && (
-                      <span style={{ fontSize: '12px', color: '#94a3b8', background: '#f1f5f9', padding: '4px 8px', borderRadius: '12px' }}>System Role</span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {roles.length === 0 && (
-              <tr>
-                <td colSpan="4" className="text-center" style={{ padding: '2rem' }}>
-                  No roles found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Roles Table Card */}
+      <div className="pg-card">
+        <div className="pg-card-header">
+          <h4 className="pg-card-title">
+            <span className="pg-card-title-icon"><FiShield /></span>
+            Custom Roles
+          </h4>
+          <span className="rp-count">{roles.length} roles</span>
+        </div>
+        <div className="pg-table-wrap">
+          {loading ? (
+            <div className="pg-loading"><FiRefreshCw /> Loading roles...</div>
+          ) : (
+            <table className="pg-table">
+              <thead>
+                <tr>
+                  <th>Role Name</th>
+                  <th>Description</th>
+                  <th>Permissions</th>
+                  <th>Members</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roles.length === 0 ? (
+                  <tr><td colSpan="5">
+                    <div className="pg-empty"><p>No custom roles found. Create one to get started.</p></div>
+                  </td></tr>
+                ) : roles.map(role => (
+                  <tr key={role._id}>
+                    <td>
+                      <div className="rp-role-name">
+                        <span className="rp-role-icon"><FiShield /></span>
+                        {role.name}
+                        {role.isSystem && <span className="rp-system-badge">System</span>}
+                      </div>
+                    </td>
+                    <td className="rp-desc">{role.description || '—'}</td>
+                    <td>
+                      <span className="pg-badge pg-badge-blue">{permCount(role)} permissions</span>
+                    </td>
+                    <td>
+                      <span className="pg-badge pg-badge-gray">{role.members || 0} members</span>
+                    </td>
+                    <td>
+                      <div className="rp-actions">
+                        {!role.isSystem ? (
+                          <>
+                            <button
+                              className="pg-btn pg-btn-secondary pg-btn-sm"
+                              onClick={() => openEditModal(role)}
+                              title="Edit Role"
+                            >
+                              <FiEdit2 />
+                            </button>
+                            <button
+                              className="pg-btn pg-btn-danger pg-btn-sm"
+                              onClick={() => handleDeleteRole(role._id, role.name)}
+                              title="Delete Role"
+                            >
+                              <FiTrash2 />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="rp-protected">🔒 Protected</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {/* CREATE / EDIT ROLE MODAL */}
+      {/* Create / Edit Role Modal */}
       {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-          justifyContent: 'center', alignItems: 'center', zIndex: 1000
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '12px', width: '90%', maxWidth: '900px',
-            maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
-              <h2 style={{ margin: '0 0 4px 0', color: '#0f172a', fontSize: '1.5rem' }}>
+        <div className="pg-modal-backdrop" onClick={e => e.target === e.currentTarget && closeModal()}>
+          <div className="pg-modal rp-modal">
+            <div className="pg-modal-header">
+              <h3 className="pg-modal-title">
+                <FiShield style={{ marginRight: 8, color: 'var(--primary)' }} />
                 {isEdit ? 'Edit Role' : 'Create New Role'}
-              </h2>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>Define details and module permissions</p>
+              </h3>
+              <button className="pg-modal-close" onClick={closeModal}><FiX /></button>
             </div>
-            
-            <form onSubmit={handleSaveRole} style={{ overflowY: 'auto', padding: '24px', flex: 1 }}>
-              
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', marginBottom: '24px' }}>
-                <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>ROLE DETAILS</h4>
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: 500, fontSize: '13px' }}>Role Name *</label>
-                    <input 
-                      type="text" required value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
-                      placeholder="e.g. Content Manager"
-                    />
-                  </div>
-                  <div style={{ flex: 2 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: 500, fontSize: '13px' }}>Description</label>
-                    <input 
-                      type="text" value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
-                      placeholder="Brief description of this role's responsibilities"
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <div style={{ padding: '16px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 4px 0', color: '#1e293b' }}>MODULE PERMISSIONS</h4>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>Select which modules and actions this role can access.</p>
+            <form onSubmit={handleSaveRole}>
+              <div className="pg-modal-body pg-form">
+
+                {/* Role Details */}
+                <div className="rp-section-title">Role Details</div>
+                <div className="pg-form-row-2">
+                  <div className="pg-form-row">
+                    <label className="pg-label"><span className="pg-label-req">*</span> Role Name</label>
+                    <input
+                      type="text" required className="pg-field"
+                      placeholder="e.g. Support Manager"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="pg-form-row">
+                    <label className="pg-label">Description</label>
+                    <input
+                      type="text" className="pg-field"
+                      placeholder="Brief description of responsibilities"
+                      value={formData.description}
+                      onChange={e => setFormData({...formData, description: e.target.value})}
+                    />
+                  </div>
                 </div>
-                
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: '12px 20px', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>MODULE</th>
-                      <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>VIEW</th>
-                      <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>CREATE</th>
-                      <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>EDIT</th>
-                      <th style={{ padding: '12px', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>DELETE</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MODULES.map(mod => (
-                      <tr key={mod} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 20px', fontWeight: 500, color: '#334155', fontSize: '14px' }}>{mod}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={formData.permissions[mod]?.view || false} onChange={() => handleCheckboxChange(mod, 'view')} />
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={formData.permissions[mod]?.create || false} onChange={() => handleCheckboxChange(mod, 'create')} />
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={formData.permissions[mod]?.edit || false} onChange={() => handleCheckboxChange(mod, 'edit')} />
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={formData.permissions[mod]?.delete || false} onChange={() => handleCheckboxChange(mod, 'delete')} />
-                        </td>
+
+                {/* Permissions Matrix */}
+                <div className="rp-section-title" style={{ marginTop: '0.5rem' }}>Module Permissions</div>
+                <p className="rp-perm-hint">Select which modules and actions this role can access.</p>
+
+                <div className="rp-perm-table-wrap">
+                  <table className="rp-perm-table">
+                    <thead>
+                      <tr>
+                        <th>Module</th>
+                        <th>All</th>
+                        <th>View</th>
+                        <th>Create</th>
+                        <th>Edit</th>
+                        <th>Delete</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {MODULES.map(mod => {
+                        const allChecked = ACTIONS.every(a => formData.permissions[mod]?.[a]);
+                        return (
+                          <tr key={mod}>
+                            <td className="rp-mod-name">{mod}</td>
+                            <td className="rp-cb-cell">
+                              <input
+                                type="checkbox"
+                                className="rp-checkbox"
+                                checked={allChecked}
+                                onChange={() => handleSelectAll(mod)}
+                                title="Toggle All"
+                              />
+                            </td>
+                            {ACTIONS.map(action => (
+                              <td key={action} className="rp-cb-cell">
+                                <input
+                                  type="checkbox"
+                                  className="rp-checkbox"
+                                  checked={formData.permissions[mod]?.[action] || false}
+                                  onChange={() => handleCheckboxChange(mod, action)}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button 
-                  type="button" 
-                  onClick={closePermissionModal}
-                  style={{
-                    padding: '10px 20px', background: '#f1f5f9', border: '1px solid #cbd5e1',
-                    borderRadius: '8px', color: '#475569', cursor: 'pointer', fontWeight: 500
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" style={{ padding: '10px 24px' }}>
+              </div>
+              <div className="pg-modal-footer">
+                <button type="button" className="pg-btn pg-btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="pg-btn pg-btn-primary">
                   {isEdit ? 'Update Role' : 'Create Role'}
                 </button>
               </div>
@@ -305,7 +326,10 @@ const RolesAndPermissions = () => {
           </div>
         </div>
       )}
+
     </div>
+    <ConfirmDialog {...confirmProps} />
+    </>
   );
 };
 

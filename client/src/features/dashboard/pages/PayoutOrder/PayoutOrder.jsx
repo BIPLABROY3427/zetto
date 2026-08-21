@@ -1,18 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../../../services/apiClient';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import api from '../../../../services/apiClient';
+import {
+  FiPlus, FiSearch, FiRefreshCw, FiArrowUpRight, FiX, FiSend
+} from 'react-icons/fi';
 import './PayoutOrder.css';
-import { FiPlus } from 'react-icons/fi';
+
+const statusClass = (s) => {
+  if (s === 'completed' || s === 'success') return 'pg-status pg-status-completed';
+  if (s === 'pending') return 'pg-status pg-status-pending';
+  return 'pg-status pg-status-failed';
+};
 
 const PayoutOrder = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filters
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
 
-  // Modal State
+  // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -27,56 +33,39 @@ const PayoutOrder = () => {
       const res = await api.get('/dashboard/transactions', {
         params: { type: 'withdrawal', search, status }
       });
-      setData(res.data.data);
-    } catch (err) {
+      setData(res.data.data || []);
+    } catch {
       toast.error('Failed to fetch Payout Orders');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [status]); // refetch on status change
+  useEffect(() => { fetchTransactions(); }, [status]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchTransactions();
+  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
+
+  const resetForm = () => {
+    setAmount(''); setAccountNumber(''); setIfscCode('');
+    setAccountName(''); setDescription('');
   };
 
   const handleCreatePayout = async (e) => {
     e.preventDefault();
-    if (!amount || amount < 100) {
-      return toast.error('Minimum amount is 100 INR');
-    }
-    if (!accountNumber || !ifscCode || !accountName) {
-      return toast.error('Please fill all bank details');
-    }
-
+    if (!amount || Number(amount) < 100) return toast.error('Minimum amount is ₹100');
+    if (!accountNumber || !ifscCode || !accountName) return toast.error('Please fill all bank details');
     try {
       setCreating(true);
-      const payload = {
+      const res = await api.post('/v1/gateway/payout', {
         amount: Number(amount),
         description: description || 'Manual Payout Request',
-        bankDetails: {
-          accountNumber,
-          ifscCode,
-          accountName
-        }
-      };
-
-      const res = await api.post('/v1/gateway/payout', payload);
-      
+        bankDetails: { accountNumber, ifscCode, accountName }
+      });
       if (res.data.success) {
-        toast.success('Payout request created successfully!');
+        toast.success('Payout request submitted!');
         setIsModalOpen(false);
-        // Reset form
-        setAmount('');
-        setAccountNumber('');
-        setIfscCode('');
-        setAccountName('');
-        setDescription('');
-        fetchTransactions(); // Refresh the list
+        resetForm();
+        fetchTransactions();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create payout');
@@ -86,137 +75,128 @@ const PayoutOrder = () => {
   };
 
   return (
-    <div className="payment-page">
-      <div className="payment-filters" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <form onSubmit={handleSearch} className="filter-form">
-          <input 
-            type="text" 
-            placeholder="Search Order No..." 
-            className="form-control"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select 
-            className="form-control"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">All States</option>
+    <div className="pg-root">
+      {/* Toolbar */}
+      <div className="pg-toolbar">
+        <form className="pg-filters" onSubmit={handleSearch}>
+          <div className="pout-search-wrap">
+            <FiSearch className="pout-search-icon" />
+            <input
+              type="text"
+              className="pg-input pout-search-input"
+              placeholder="Search order ID..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
           </select>
-          <button type="submit" className="btn-primary">Query</button>
+          <button type="submit" className="pg-btn pg-btn-secondary">
+            <FiSearch /> Search
+          </button>
+          <button type="button" className="pg-btn pg-btn-secondary" onClick={fetchTransactions}>
+            <FiRefreshCw />
+          </button>
         </form>
-
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-          <FiPlus /> Create Payout Request
-        </button>
+        <div className="pg-actions">
+          <button className="pg-btn pg-btn-primary" onClick={() => { resetForm(); setIsModalOpen(true); }}>
+            <FiPlus /> Create Payout Request
+          </button>
+        </div>
       </div>
 
-      <div className="table-container">
-        {loading ? (
-          <div className="loading-spinner">Loading Data...</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order No</th>
-                <th>Amount</th>
-                <th>Currency</th>
-                <th>Order State</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
-                <tr><td colSpan="5" className="text-center">No Data</td></tr>
-              ) : (
-                data.map(tx => (
+      {/* Table Card */}
+      <div className="pg-card">
+        <div className="pg-card-header">
+          <h4 className="pg-card-title">
+            <span className="pg-card-title-icon"><FiArrowUpRight /></span>
+            Payout Orders
+          </h4>
+          <span className="pout-count-badge">{data.length} records</span>
+        </div>
+        <div className="pg-table-wrap">
+          {loading ? (
+            <div className="pg-loading"><FiRefreshCw className="spin" /> Loading...</div>
+          ) : (
+            <table className="pg-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Amount</th>
+                  <th>Currency</th>
+                  <th>Status</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr><td colSpan="5">
+                    <div className="pg-empty"><p>No payout orders found</p></div>
+                  </td></tr>
+                ) : data.map(tx => (
                   <tr key={tx._id}>
-                    <td>{tx.transactionId}</td>
-                    <td>{tx.amount}</td>
-                    <td><span className="currency-badge">INR</span></td>
-                    <td>
-                      <span className={`status-badge ${tx.status === 'completed' ? 'open' : 'close'}`}>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td>{new Date(tx.createdAt).toLocaleString()}</td>
+                    <td className="pout-order-id">{tx.transactionId}</td>
+                    <td className="pout-amount">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td><span className="pg-badge pg-badge-inr">INR</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td className="pout-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {/* CREATE PAYOUT MODAL */}
+      {/* Create Payout Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" style={overlayStyle}>
-          <div className="modal-content" style={modalContentStyle}>
-            <h2 style={{ marginTop: 0 }}>Request Payout</h2>
-            
+        <div className="pg-modal-backdrop" onClick={e => e.target === e.currentTarget && setIsModalOpen(false)}>
+          <div className="pg-modal">
+            <div className="pg-modal-header">
+              <h3 className="pg-modal-title">
+                <FiSend style={{ marginRight: 8, color: 'var(--primary)' }} />
+                Request Payout
+              </h3>
+              <button className="pg-modal-close" onClick={() => setIsModalOpen(false)}><FiX /></button>
+            </div>
             <form onSubmit={handleCreatePayout}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Amount (INR)</label>
-                <input 
-                  type="number" 
-                  value={amount} 
-                  onChange={e => setAmount(e.target.value)} 
-                  required 
-                  min="100"
-                  style={inputStyle} 
-                  placeholder="Min 100"
-                />
+              <div className="pg-modal-body pg-form">
+                <div className="pg-form-row">
+                  <label className="pg-label"><span className="pg-label-req">*</span> Amount (INR)</label>
+                  <input type="number" min="100" required className="pg-field"
+                    placeholder="Minimum ₹100" value={amount} onChange={e => setAmount(e.target.value)} />
+                </div>
+                <div className="pg-form-row-2">
+                  <div className="pg-form-row">
+                    <label className="pg-label"><span className="pg-label-req">*</span> Account Number</label>
+                    <input type="text" required className="pg-field"
+                      placeholder="e.g. 1234567890" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} />
+                  </div>
+                  <div className="pg-form-row">
+                    <label className="pg-label"><span className="pg-label-req">*</span> IFSC Code</label>
+                    <input type="text" required className="pg-field"
+                      placeholder="e.g. SBIN0001234" value={ifscCode} onChange={e => setIfscCode(e.target.value.toUpperCase())} />
+                  </div>
+                </div>
+                <div className="pg-form-row">
+                  <label className="pg-label"><span className="pg-label-req">*</span> Account Holder Name</label>
+                  <input type="text" required className="pg-field"
+                    placeholder="e.g. John Doe" value={accountName} onChange={e => setAccountName(e.target.value)} />
+                </div>
+                <div className="pg-form-row">
+                  <label className="pg-label">Description (Optional)</label>
+                  <input type="text" className="pg-field"
+                    placeholder="e.g. Vendor Payment" value={description} onChange={e => setDescription(e.target.value)} />
+                </div>
               </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Account Number</label>
-                <input 
-                  type="text" 
-                  value={accountNumber} 
-                  onChange={e => setAccountNumber(e.target.value)} 
-                  required 
-                  style={inputStyle} 
-                  placeholder="E.g. 1234567890"
-                />
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>IFSC Code</label>
-                <input 
-                  type="text" 
-                  value={ifscCode} 
-                  onChange={e => setIfscCode(e.target.value)} 
-                  required 
-                  style={inputStyle} 
-                  placeholder="E.g. SBIN0001234"
-                />
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Account Holder Name</label>
-                <input 
-                  type="text" 
-                  value={accountName} 
-                  onChange={e => setAccountName(e.target.value)} 
-                  required 
-                  style={inputStyle} 
-                  placeholder="E.g. John Doe"
-                />
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>Description (Optional)</label>
-                <input 
-                  type="text" 
-                  value={description} 
-                  onChange={e => setDescription(e.target.value)} 
-                  style={inputStyle} 
-                  placeholder="E.g. Vendor Payment"
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={creating} style={{ padding: '8px 16px' }}>
-                  {creating ? 'Processing...' : 'Submit Request'}
+              <div className="pg-modal-footer">
+                <button type="button" className="pg-btn pg-btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="pg-btn pg-btn-primary" disabled={creating}>
+                  {creating ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
             </form>
@@ -225,26 +205,6 @@ const PayoutOrder = () => {
       )}
     </div>
   );
-};
-
-// Inline styles for modals
-const overlayStyle = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-  justifyContent: 'center', alignItems: 'center', zIndex: 1000
-};
-const modalContentStyle = {
-  background: '#ffffff', borderRadius: '12px', width: '100%',
-  maxWidth: '400px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-};
-const labelStyle = { display: 'block', marginBottom: '8px', color: '#475569', fontWeight: 500 };
-const inputStyle = {
-  width: '100%', padding: '10px', borderRadius: '8px',
-  border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px'
-};
-const cancelBtnStyle = {
-  padding: '8px 16px', background: '#f1f5f9', border: '1px solid #cbd5e1',
-  borderRadius: '8px', color: '#475569', cursor: 'pointer', fontWeight: 500
 };
 
 export default PayoutOrder;

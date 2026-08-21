@@ -1,46 +1,29 @@
-.payment-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  background: var(--bg-panel);
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  border: 1px solid var(--border-color);
-}
+/* SystemTransactions */
+.st-search-wrap { position: relative; display: flex; align-items: center; }
+.st-search-icon { position: absolute; left: 10px; color: var(--text-secondary); pointer-events: none; }
+.st-search-input { padding-left: 2rem !important; }
 
-.payment-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
+.st-merchant { cursor: pointer; }
+.st-merchant:hover .st-merchant-name { color: var(--primary); text-decoration: underline; }
+.st-merchant-name { display: block; font-weight: 600; color: var(--text-primary); font-size: 0.875rem; }
+.st-merchant-email { display: block; font-size: 0.75rem; color: var(--text-secondary); }
 
-.filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-}
+.st-order-id { font-family: monospace; font-size: 0.8rem; color: var(--primary); font-weight: 600; }
+.st-details { font-size: 0.8rem; color: var(--text-secondary); max-width: 150px; }
+.st-link { color: var(--primary); font-weight: 600; text-decoration: none; }
+.st-link:hover { text-decoration: underline; }
+.st-date { color: var(--text-secondary); font-size: 0.82rem; white-space: nowrap; }
+.st-actions { display: flex; gap: 0.375rem; }
 
-.filter-form .form-control {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+.st-payload-pre {
   background: #f8fafc;
-  outline: none;
-}
-
-.filter-form .btn-primary {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.table-container {
-  overflow-x: auto;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  line-height: 1.5;
+  max-height: 60vh;
+  overflow-y: auto;
+  color: var(--text-primary);
 }

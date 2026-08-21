@@ -299,17 +299,23 @@ export const getAdminAnalytics = async (req, res) => {
   try {
     const { days = 7, startDate, endDate } = req.query; // 7 or 30
     
-    let matchQuery = { status: 'completed' };
+    let topMerchantsMatchQuery = { status: 'completed' };
+    let lifetimeMatchQuery = {}; // We want lifetime data for allMerchantsStats, but if the user wants filtered date, we can apply it. Let's see.
 
     if (startDate && endDate) {
-      matchQuery.createdAt = {
+      topMerchantsMatchQuery.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+      lifetimeMatchQuery.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate)
       };
     } else if (days === 'today') {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      matchQuery.createdAt = { $gte: today };
+      topMerchantsMatchQuery.createdAt = { $gte: today };
+      lifetimeMatchQuery.createdAt = { $gte: today };
     } else if (days === 'yesterday') {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -318,18 +324,20 @@ export const getAdminAnalytics = async (req, res) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      matchQuery.createdAt = { $gte: yesterday, $lt: today };
-    } else {
+      topMerchantsMatchQuery.createdAt = { $gte: yesterday, $lt: today };
+      lifetimeMatchQuery.createdAt = { $gte: yesterday, $lt: today };
+    } else if (days !== 'lifetime') {
       const dateLimit = new Date();
       dateLimit.setDate(dateLimit.getDate() - parseInt(days));
       dateLimit.setHours(0,0,0,0);
-      matchQuery.createdAt = { $gte: dateLimit };
+      topMerchantsMatchQuery.createdAt = { $gte: dateLimit };
+      lifetimeMatchQuery.createdAt = { $gte: dateLimit };
     }
 
     // 1. Top Merchants by Volume (for the selected time period)
     const topMerchants = await Transaction.aggregate([
       {
-        $match: matchQuery
+        $match: topMerchantsMatchQuery
       },
       {
         $group: {
@@ -363,16 +371,15 @@ export const getAdminAnalytics = async (req, res) => {
 
     // 2. All Merchants Performance List (Lifetime or based on filter?)
     // User requested: "user ne ketna ajtak payment link ceate keya number of transaction total ketna amount payin keya and petna payout yea sab"
-    // "ajtak" means lifetime (Overall)
+    // "ajtak" means lifetime (Overall), so we completely ignore the date filter for this table!
     
     const allMerchantsStats = await Transaction.aggregate([
       {
-        $match: matchQuery // Filter by the selected date range
-      },
-      {
         $group: {
           _id: "$merchantId",
-          totalLinksCreated: { $sum: 1 },
+          totalLinksCreated: { 
+            $sum: { $cond: [{ $eq: ["$type", "payment"] }, 1, 0] } 
+          },
           totalPayinAmount: {
             $sum: {
               $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "completed"] }] }, "$amount", 0]

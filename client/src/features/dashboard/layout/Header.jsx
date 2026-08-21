@@ -97,42 +97,62 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
 
         {/* Notifications Dropdown */}
         <div className="nav-dropdown-wrapper" ref={notifRef}>
-          <button 
-            className="nav-icon-btn" 
-            onClick={() => {
-              setIsNotifDropdownOpen(!isNotifDropdownOpen);
-              navigate('/dashboard/tickets');
-            }}
+          <button
+            className="nav-icon-btn"
+            onClick={() => setIsNotifDropdownOpen(prev => !prev)}
+            title="Notifications"
           >
             <FiBell size={20} />
-            {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+            {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
 
           {isNotifDropdownOpen && (
             <div className="nav-dropdown-menu notif-menu">
-              <div className="dropdown-header">
-                <h4>Notifications</h4>
-                <span className="badge">{unreadCount} New</span>
+              {/* Header */}
+              <div className="notif-header">
+                <div className="notif-header-left">
+                  <FiBell size={16} />
+                  <span>Notifications</span>
+                </div>
+                {unreadCount > 0 && (
+                  <span className="notif-count-badge">{unreadCount} new</span>
+                )}
               </div>
-              <div className="dropdown-body">
+
+              {/* Body */}
+              <div className="notif-body">
                 {unreadCount > 0 ? (
                   <div className="notif-item unread">
-                    <div className="notif-icon success" style={{ background: '#3b82f6' }}><FiMessageSquare style={{ color: 'white' }} /></div>
-                    <div className="notif-content">
-                      <p>You have <strong>{unreadCount}</strong> unread support messages.</p>
-                      <span>Just now</span>
+                    <div className="notif-item-icon">
+                      <FiMessageSquare size={16} />
                     </div>
+                    <div className="notif-item-content">
+                      <p className="notif-item-title">
+                        <strong>{unreadCount} unread</strong> support message{unreadCount > 1 ? 's' : ''}
+                      </p>
+                      <p className="notif-item-desc">You have new replies in your support tickets</p>
+                      <span className="notif-item-time">Just now</span>
+                    </div>
+                    <div className="notif-item-dot" />
                   </div>
                 ) : (
-                  <div className="notif-item">
-                    <div className="notif-content">
-                      <p>No new notifications</p>
-                    </div>
+                  <div className="notif-empty">
+                    <div className="notif-empty-icon">🔔</div>
+                    <p className="notif-empty-title">All caught up!</p>
+                    <p className="notif-empty-sub">No new notifications right now</p>
                   </div>
                 )}
               </div>
-              <div className="dropdown-footer">
-                <button onClick={() => navigate('/dashboard/tickets')}>View Support Tickets</button>
+
+              {/* Footer */}
+              <div className="notif-footer">
+                <button
+                  className="notif-footer-btn"
+                  onClick={() => { setIsNotifDropdownOpen(false); navigate('/dashboard/tickets'); }}
+                >
+                  <FiMessageSquare size={14} />
+                  View Support Tickets
+                </button>
               </div>
             </div>
           )}
@@ -168,8 +188,24 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
                 </div>
               </div>
               <div className="dropdown-links">
-                <button className="dropdown-link-item"><FiSettings /> Account Settings</button>
-                <button className="dropdown-link-item"><FiActivity /> Activity Log</button>
+                <button 
+                  className="dropdown-link-item" 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    navigate('/dashboard/account-settings');
+                  }}
+                >
+                  <FiSettings /> Account Settings
+                </button>
+                <button 
+                  className="dropdown-link-item" 
+                  onClick={() => {
+                    setIsProfileDropdownOpen(false);
+                    navigate('/dashboard/activity-log');
+                  }}
+                >
+                  <FiActivity /> Activity Log
+                </button>
                 <div className="dropdown-divider"></div>
                 <button className="dropdown-link-item danger" onClick={handleLogout}><FiLogOut /> Sign Out</button>
               </div>

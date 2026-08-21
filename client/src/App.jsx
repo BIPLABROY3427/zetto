@@ -25,6 +25,8 @@ const Profile = lazy(() => import("./features/dashboard/pages/Profile/Profile"))
 const SystemTransactions = lazy(() => import("./features/dashboard/pages/SystemTransactions/SystemTransactions"));
 const ApiDocumentation = lazy(() => import("./features/dashboard/pages/ApiDocumentation/ApiDocumentation"));
 const UserProfileDetails = lazy(() => import("./features/dashboard/pages/UserProfileDetails/UserProfileDetails"));
+const AccountSettings = lazy(() => import("./features/dashboard/pages/AccountSettings/AccountSettings"));
+const ActivityLog = lazy(() => import("./features/dashboard/pages/ActivityLog/ActivityLog"));
 
 const ProtectedRoute = () => {
   const { user, loading } = useAuth();
@@ -96,6 +98,8 @@ const App = () => {
               <Route element={<PermissionRoute moduleName="Developer Settings" />}>
                 <Route path="basic" element={<BasicSetting />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="account-settings" element={<AccountSettings />} />
+                <Route path="activity-log" element={<ActivityLog />} />
               </Route>
 
               <Route element={<PermissionRoute moduleName="Payin Management" />}>

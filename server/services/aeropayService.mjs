@@ -128,7 +128,13 @@ export const upstreamBalance = async () => {
         const response = await axios.post(`${API_BASE}/balance/query`, payload);
         return response.data;
     } catch (error) {
-        throw new Error("Failed to query upstream balance");
+        if (error.response && error.response.data) {
+            console.error("upstreamBalance error response:", error.response.data);
+            throw new Error(`Aeropay Error: ${error.response.data.msg || 'Unknown Provider Error'}`);
+        } else {
+            console.error("upstreamBalance error:", error.message);
+            throw new Error("Failed to query upstream balance");
+        }
     }
 };
 

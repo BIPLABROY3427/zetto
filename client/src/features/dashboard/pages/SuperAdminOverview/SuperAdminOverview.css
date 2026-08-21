@@ -1,0 +1,56 @@
+/* SuperAdminOverview — Light Theme */
+.sa-heading { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+.sa-sub     { margin: 2px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+
+/* Stat icon */
+.sa-stat-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; margin-bottom: 0.5rem;
+}
+.sa-stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+.sa-stat-icon.amber  { background: #fffbeb; color: #b45309; }
+.sa-stat-icon.green  { background: #f0fdf4; color: #16a34a; }
+.sa-stat-icon.purple { background: #faf5ff; color: #7c3aed; }
+
+/* Bottom grid */
+.sa-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Leaderboard */
+.sa-filter-group { display: flex; gap: 0.5rem; align-items: center; }
+.sa-custom-dates { display: flex; gap: 0.5rem; padding: 0 1.5rem 1rem; flex-wrap: wrap; }
+
+.sa-leaderboard-row {
+  display: flex; align-items: center; gap: 0.875rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.sa-leaderboard-row:last-child { border-bottom: none; }
+
+.sa-lb-rank {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #f1f5f9; color: #475569;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+}
+
+.sa-lb-info { flex: 1; min-width: 0; }
+.sa-lb-name { margin: 0; font-weight: 600; color: var(--text-primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-lb-txn  { color: var(--text-secondary); font-size: 0.78rem; }
+
+.sa-lb-vol { font-size: 0.95rem; font-weight: 700; color: var(--primary); flex-shrink: 0; }
+
+/* Table */
+.sa-merchant-name  { font-weight: 600; color: var(--text-primary); font-size: 0.875rem; }
+.sa-merchant-email { font-size: 0.75rem; color: var(--text-secondary); }
+.sa-payin-val  { font-weight: 700; color: #16a34a; }
+.sa-payout-val { font-weight: 700; color: #b45309; }
+
+@media (max-width: 900px) {
+  .sa-grid { grid-template-columns: 1fr; }
+}

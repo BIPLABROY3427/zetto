@@ -2,221 +2,159 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../../services/apiClient';
 import { toast } from 'react-toastify';
+import { FiSearch, FiRefreshCw, FiEye, FiRotateCw, FiX, FiDatabase } from 'react-icons/fi';
 import './SystemTransactions.css';
+
+const statusClass = (s) => {
+  if (s === 'completed' || s === 'sent' || s === 'success') return 'pg-status pg-status-completed';
+  if (s === 'pending') return 'pg-status pg-status-pending';
+  return 'pg-status pg-status-failed';
+};
 
 const SystemTransactions = ({ initialType = 'all' }) => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Filters
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [type, setType] = useState(initialType);
-  
-  // Modal States
-  const [selectedTx, setSelectedTx] = useState(null); // For Full Payload Modal
+  const [selectedTx, setSelectedTx] = useState(null);
 
-  // Update type when initialType prop changes (for route changes)
-  useEffect(() => {
-    setType(initialType);
-  }, [initialType]);
+  useEffect(() => { setType(initialType); }, [initialType]);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/dashboard/admin/transactions', {
-        params: { type, search, status }
-      });
-      setData(res.data.data);
-    } catch (err) {
-      toast.error('Failed to fetch Payin Orders');
-    } finally {
-      setLoading(false);
-    }
+      const res = await api.get('/dashboard/admin/transactions', { params: { type, search, status } });
+      setData(res.data.data || []);
+    } catch { toast.error('Failed to fetch transactions'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [status, type]); // refetch on status/type change
+  useEffect(() => { fetchTransactions(); }, [status, type]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchTransactions();
-  };
-
-  const handleOpenUserModal = (merchantId) => {
-    if (!merchantId || !merchantId._id) return;
-    navigate(`/dashboard/users/${merchantId._id}`);
-  };
+  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
 
   const handleResendWebhook = async (id) => {
     try {
       const res = await api.post(`/dashboard/transactions/${id}/resend-webhook`, {}, { hideErrorToast: true });
-      if (res.data.success) {
-        toast.success(`Webhook resent! Status: ${res.data.webhookStatus}`);
-        fetchTransactions(); // Refresh status
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend webhook');
-    }
+      if (res.data.success) { toast.success(`Webhook resent!`); fetchTransactions(); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to resend webhook'); }
   };
 
   return (
-    <div className="payment-page">
-      <div className="payment-filters">
-        <form onSubmit={handleSearch} className="filter-form">
-          <input 
-            type="text" 
-            placeholder="Search Order No..." 
-            className="form-control"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select 
-            className="form-control"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">All States</option>
+    <div className="pg-root">
+      <div className="pg-toolbar">
+        <form className="pg-filters" onSubmit={handleSearch}>
+          <div className="st-search-wrap">
+            <FiSearch className="st-search-icon" />
+            <input type="text" className="pg-input st-search-input"
+              placeholder="Search order ID..." value={search}
+              onChange={e => setSearch(e.target.value)} />
+          </div>
+          <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
           </select>
-          <select 
-            className="form-control"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
+          <select className="pg-select" value={type} onChange={e => setType(e.target.value)}>
             <option value="all">All Types</option>
             <option value="payment">PayIn</option>
             <option value="withdrawal">PayOut</option>
           </select>
-          <button type="submit" className="btn-primary">Query</button>
+          <button type="submit" className="pg-btn pg-btn-secondary"><FiSearch /> Search</button>
+          <button type="button" className="pg-btn pg-btn-secondary" onClick={fetchTransactions}><FiRefreshCw /></button>
         </form>
       </div>
 
-      <div className="table-container">
-        {loading ? (
-          <div className="loading-spinner">Loading Data...</div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Merchant</th>
-                <th>Type</th>
-                <th>Order No</th>
-                <th>Amount</th>
-                <th>Details</th>
-                <th>Order State</th>
-                <th>Webhook</th>
-                <th>Time</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 ? (
-                <tr><td colSpan="9" className="text-center">No Data</td></tr>
-              ) : (
-                data.map(tx => (
+      <div className="pg-card">
+        <div className="pg-card-header">
+          <h4 className="pg-card-title">
+            <span className="pg-card-title-icon"><FiDatabase /></span>
+            System Transactions
+          </h4>
+          <span className="tk-count">{data.length} records</span>
+        </div>
+        <div className="pg-table-wrap">
+          {loading ? (
+            <div className="pg-loading"><FiRefreshCw /> Loading...</div>
+          ) : (
+            <table className="pg-table">
+              <thead>
+                <tr>
+                  <th>Merchant</th>
+                  <th>Type</th>
+                  <th>Order ID</th>
+                  <th>Amount</th>
+                  <th>Details</th>
+                  <th>Status</th>
+                  <th>Webhook</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr><td colSpan="9"><div className="pg-empty"><p>No transactions found</p></div></td></tr>
+                ) : data.map(tx => (
                   <tr key={tx._id}>
                     <td>
-                      <div 
-                        onClick={() => handleOpenUserModal(tx.merchantId)} 
-                        style={{ cursor: 'pointer', color: '#2563eb' }}
-                      >
-                        <strong>{tx.merchantId?.name || 'Unknown'}</strong><br/>
-                        <small style={{ color: '#64748b' }}>{tx.merchantId?.email}</small>
+                      <div className="st-merchant" onClick={() => navigate(`/dashboard/users/${tx.merchantId?._id}`)}>
+                        <span className="st-merchant-name">{tx.merchantId?.name || 'Unknown'}</span>
+                        <span className="st-merchant-email">{tx.merchantId?.email}</span>
                       </div>
                     </td>
                     <td>
-                      <span className="currency-badge">{tx.type}</span>
+                      <span className={`pg-badge ${tx.type === 'payment' ? 'pg-badge-blue' : 'pg-badge-amber'}`}>
+                        {tx.type === 'payment' ? 'PayIn' : 'PayOut'}
+                      </span>
                     </td>
-                    <td>{tx.transactionId}</td>
-                    <td>₹{tx.amount}</td>
-                    <td>
+                    <td className="st-order-id">{tx.transactionId}</td>
+                    <td style={{ fontWeight: 700 }}>₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td className="st-details">
                       {tx.type === 'payment' ? (
-                        <div style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {tx.paymentUrl ? (
-                            <a href={tx.paymentUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Link</a>
-                          ) : '-'}
-                          {tx.upiId && <div style={{ fontSize: '12px', color: '#64748b' }}>{tx.upiId}</div>}
-                        </div>
+                        tx.paymentUrl ? <a href={tx.paymentUrl} target="_blank" rel="noreferrer" className="st-link">Link ↗</a> : '-'
                       ) : (
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
-                          {tx.customerDetails?.accountNumber ? (
-                            <>
-                              <div>A/c: {tx.customerDetails.accountNumber}</div>
-                              <div>IFSC: {tx.customerDetails.ifscCode}</div>
-                            </>
-                          ) : '-'}
-                        </div>
+                        tx.customerDetails?.accountNumber
+                          ? <span>{tx.customerDetails.accountNumber} / {tx.customerDetails.ifscCode}</span>
+                          : '-'
                       )}
                     </td>
+                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.webhookStatus || 'pending')}>{tx.webhookStatus || 'pending'}</span></td>
+                    <td className="st-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td>
-                      <span className={`status-badge ${tx.status === 'completed' ? 'open' : 'close'}`}>
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${tx.webhookStatus === 'sent' ? 'open' : (tx.webhookStatus === 'failed' ? 'close' : 'pending')}`}>
-                        {tx.webhookStatus || 'pending'}
-                      </span>
-                    </td>
-                    <td>{new Date(tx.createdAt).toLocaleString()}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          className="btn-secondary" 
-                          style={{ padding: '4px 8px', fontSize: '12px' }}
-                          onClick={() => setSelectedTx(tx)}
-                        >
-                          View
-                        </button>
-                        <button 
-                          className="btn-primary" 
-                          style={{ padding: '4px 8px', fontSize: '12px' }}
-                          onClick={() => handleResendWebhook(tx._id)}
-                        >
-                          Resend Webhook
-                        </button>
+                      <div className="st-actions">
+                        <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => setSelectedTx(tx)}><FiEye /></button>
+                        <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => handleResendWebhook(tx._id)} title="Resend Webhook"><FiRotateCw /></button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      {/* FULL PAYLOAD MODAL */}
+      {/* Full Payload Modal */}
       {selectedTx && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-          justifyContent: 'center', alignItems: 'center', zIndex: 1000
-        }}>
-          <div style={{
-            background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '800px',
-            maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem' }}>Transaction Payload</h2>
-              <button onClick={() => setSelectedTx(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✖</button>
+        <div className="pg-modal-backdrop" onClick={e => e.target === e.currentTarget && setSelectedTx(null)}>
+          <div className="pg-modal pg-modal-lg">
+            <div className="pg-modal-header">
+              <h3 className="pg-modal-title"><FiDatabase style={{ marginRight: 8 }} /> Transaction Payload</h3>
+              <button className="pg-modal-close" onClick={() => setSelectedTx(null)}><FiX /></button>
             </div>
-            
-            <pre style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', overflowX: 'auto', fontSize: '14px', border: '1px solid #e2e8f0' }}>
-              {JSON.stringify(selectedTx, null, 2)}
-            </pre>
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button onClick={() => setSelectedTx(null)} className="btn-secondary">Close</button>
+            <div className="pg-modal-body">
+              <pre className="st-payload-pre">{JSON.stringify(selectedTx, null, 2)}</pre>
+            </div>
+            <div className="pg-modal-footer">
+              <button className="pg-btn pg-btn-secondary" onClick={() => setSelectedTx(null)}>Close</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

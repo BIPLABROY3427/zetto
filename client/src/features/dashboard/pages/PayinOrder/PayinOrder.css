@@ -1,46 +1,80 @@
-.payment-page {
+/* PayinOrder — Light Theme */
+.po-search-wrap {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  background: var(--bg-panel);
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  border: 1px solid var(--border-color);
-}
-
-.payment-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
   align-items: center;
 }
+.po-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+.po-search-input { padding-left: 2rem !important; }
 
-.filter-form .form-control {
-  padding: 0.5rem 1rem;
+.po-count-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: #f1f5f9;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+}
+
+.po-order-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.po-amount {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.po-date { color: var(--text-secondary); font-size: 0.82rem; }
+
+/* Success State */
+.po-success-icon {
+  width: 52px; height: 52px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 2px solid #86efac;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700;
+  margin: 0 auto 1rem;
+}
+.po-success-msg {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+}
+.po-link-box {
   background: #f8fafc;
-  outline: none;
-}
-
-.filter-form .btn-primary {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.5rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.table-container {
-  overflow-x: auto;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.78rem;
+  font-family: monospace;
+  word-break: break-all;
+  color: var(--text-primary);
+  line-height: 1.5;
 }
+
+/* Spinner inside button */
+.po-spin {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 6px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

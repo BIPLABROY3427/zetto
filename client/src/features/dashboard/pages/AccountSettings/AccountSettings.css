@@ -1,0 +1,123 @@
+/* AccountSettings */
+.as-heading { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+.as-sub     { margin: 2px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+
+/* Identity Card */
+.as-identity-card {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+}
+
+.as-avatar {
+  width: 68px; height: 68px;
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 1.4rem; font-weight: 800;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+}
+
+.as-identity-name  { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+.as-identity-email { margin: 3px 0 8px; font-size: 0.85rem; color: var(--text-secondary); }
+.as-identity-role  { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 10px; border-radius: 20px; text-transform: capitalize; }
+
+.as-vip-badge {
+  position: absolute; top: 1rem; right: 1rem;
+  background: #fffbeb; color: #b45309;
+  border: 1px solid #fde68a; border-radius: 8px;
+  font-size: 0.78rem; font-weight: 700; padding: 3px 10px;
+}
+
+/* Two-column grid for the two forms */
+.as-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+/* Password input */
+.as-input-wrap { position: relative; display: flex; align-items: center; }
+.as-pwd-input  { padding-right: 2.5rem !important; }
+.as-eye-btn {
+  position: absolute; right: 10px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); display: flex; align-items: center;
+  padding: 0; transition: color 0.15s;
+}
+.as-eye-btn:hover { color: var(--primary); }
+
+/* Password strength */
+.as-pwd-strength {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 6px;
+}
+.as-pwd-bar {
+  flex: 1; height: 4px; border-radius: 2px;
+  transition: background 0.3s;
+}
+.as-pwd-bar.weak   { background: #ef4444; }
+.as-pwd-bar.medium { background: #f59e0b; }
+.as-pwd-bar.strong { background: #16a34a; }
+.as-pwd-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); }
+
+/* Input error */
+.as-input-error { border-color: #ef4444 !important; }
+.as-error-msg   { margin: 4px 0 0; font-size: 0.78rem; color: #ef4444; }
+
+/* Security tips */
+.as-security-tips {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+}
+.as-tips-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--text-secondary);
+  display: flex; align-items: center; gap: 5px;
+}
+.as-security-tips ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.as-security-tips li { font-size: 0.8rem; color: var(--text-secondary); padding-left: 1.25rem; position: relative; }
+.as-security-tips li::before { content: '○'; position: absolute; left: 0; }
+.as-security-tips li.done { color: #16a34a; }
+.as-security-tips li.done::before { content: '✓'; color: #16a34a; }
+
+/* Account Info Grid */
+.as-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+.as-info-item { display: flex; flex-direction: column; gap: 6px; }
+
+.as-copy-row { display: flex; align-items: center; gap: 8px; }
+.as-mono     { font-family: monospace; font-size: 0.78rem; color: var(--primary); word-break: break-all; }
+.as-copy-btn {
+  background: #f1f5f9; border: 1px solid var(--border-color);
+  border-radius: 6px; padding: 3px 6px; cursor: pointer;
+  color: var(--text-secondary); display: flex; align-items: center;
+  flex-shrink: 0; transition: background 0.15s;
+}
+.as-copy-btn:hover { background: #e2e8f0; color: var(--primary); }
+
+/* Spin animation */
+.as-spin { animation: asSpin 0.7s linear infinite; }
+@keyframes asSpin { to { transform: rotate(360deg); } }
+
+/* Mobile */
+@media (max-width: 900px) {
+  .as-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .as-identity-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .as-vip-badge { top: 0.75rem; right: 0.75rem; }
+  .as-info-grid { grid-template-columns: 1fr 1fr; }
+}
