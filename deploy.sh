@@ -26,7 +26,7 @@ BACKEND_PATH="/www/wwwroot/GetwayBackend"
 FRONTEND_PATH="/www/wwwroot/GetwayFrontend"
 
 # Ports
-BACKEND_PORT="5872"
+BACKEND_PORT="8459"
 
 # Start Command
 BACKEND_START_COMMAND="node index.mjs"
