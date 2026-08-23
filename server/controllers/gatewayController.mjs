@@ -127,19 +127,21 @@ export const createPaymentIntent = async (req, res) => {
 export const aeroPayInCallback = async (req, res) => {
     try {
         const payload = req.body;
-        const incomingSign = payload.sign;
+        const data = payload.data ? payload.data : payload;
+        const incomingSign = data.sign;
 
-        // Verify signature
-        if (!verifySignature(payload, incomingSign)) {
-            return res.status(400).send('invalid signature');
+        // Verify signature (only data participates in signing as per docs)
+        if (!verifySignature(data, incomingSign)) {
+            return res.status(400).json({ success: false, message: 'invalid signature' });
         }
 
-        const { orderNo, orderState, amount, businessNo } = payload;
+        const { orderNo, orderState, amount, realAmount, businessNo } = data;
+        const finalAmount = realAmount || amount;
 
         // Find transaction
         const transaction = await Transaction.findOne({ transactionId: orderNo });
         if (!transaction) {
-            return res.status(404).send('order not found');
+            return res.status(404).json({ success: false, message: 'order not found' });
         }
 
         if (businessNo) {
@@ -148,7 +150,7 @@ export const aeroPayInCallback = async (req, res) => {
 
         // Idempotency check
         if (transaction.status === 'completed') {
-            return res.status(200).send('success');
+            return res.status(200).send('ok');
         }
 
         // orderState mapping: 1 = Success, 2,4 = Failed
@@ -161,7 +163,7 @@ export const aeroPayInCallback = async (req, res) => {
                 {
                     $inc: {
                         walletBalance: transaction.amount - (transaction.commissionAmount || 0),
-                        totalReceived: Number(amount)
+                        totalReceived: Number(finalAmount)
                     }
                 },
                 { new: true }
@@ -175,7 +177,7 @@ export const aeroPayInCallback = async (req, res) => {
                 sendWebhookToMerchant(merchant, transaction);
             }
 
-            return res.status(200).send('success');
+            return res.status(200).send('ok');
         } else if (String(orderState) === '2' || String(orderState) === '4') {
             transaction.status = 'failed';
             await transaction.save();
@@ -183,14 +185,14 @@ export const aeroPayInCallback = async (req, res) => {
             const merchant = await User.findById(transaction.merchantId);
             if (merchant) sendWebhookToMerchant(merchant, transaction);
 
-            return res.status(200).send('success'); // ACK the webhook
+            return res.status(200).send('ok'); // ACK the webhook
         }
 
         // Pending states
-        return res.status(200).send('success');
+        return res.status(200).send('ok');
     } catch (error) {
         console.error('AeroPay Callback Error:', error);
-        res.status(500).send('server error');
+        res.status(500).json({ success: false, message: 'server error' });
     }
 };
 
@@ -260,23 +262,32 @@ export const createPayoutIntent = async (req, res) => {
         // Call AeroPay
         try {
             const aeroResponse = await initiatePayOut(orderNo, amount, bankDetails);
-            
+
             console.log("=== AEROPAY PAYOUT SUCCESS RESPONSE ===", aeroResponse);
+
+            if (aeroResponse.isNetworkError) {
+                newTransaction.description = `Processing (Network/Timeout: ${aeroResponse.message})`;
+                await newTransaction.save();
+                return res.status(200).json({ success: true, message: 'Payout processing. Awaiting gateway confirmation.', transactionId: orderNo });
+            }
 
             if (aeroResponse.code === 0) {
                 newTransaction.gatewayResponse = aeroResponse;
                 await newTransaction.save();
                 return res.status(200).json({ success: true, message: 'Payout initiated successfully', transactionId: orderNo });
             } else {
-                throw new Error("Gateway rejected payout");
+                throw new Error(aeroResponse.msg || "Gateway rejected payout");
             }
         } catch (aeroError) {
             console.log("=== AEROPAY PAYOUT ERROR ===", aeroError.message);
             const errMsg = aeroError.message || "";
             if (errMsg.toLowerCase().includes('balance') || errMsg.toLowerCase().includes('insufficient')) {
-                newTransaction.status = 'queued';
-                newTransaction.description = 'Queued due to insufficient upstream balance';
-                await newTransaction.save();
+                const updatedTx = await Transaction.findOneAndUpdate(
+                    { transactionId: orderNo, status: 'pending' },
+                    { $set: { status: 'queued', description: 'Queued due to insufficient upstream balance' } },
+                    { new: true }
+                );
+                
                 return res.status(200).json({
                     success: true,
                     message: 'Payout queued due to system limits. It will be processed automatically.',
@@ -285,18 +296,24 @@ export const createPayoutIntent = async (req, res) => {
             }
 
             // Revert balance if gateway fails immediately for other reasons
-            await User.updateOne(
-                { _id: merchant._id },
-                {
-                    $inc: {
-                        walletBalance: totalDeduction,
-                        totalWithdrawals: -Number(amount)
-                    }
-                }
+            const updatedTx = await Transaction.findOneAndUpdate(
+                { transactionId: orderNo, status: { $nin: ['failed', 'refunded', 'queued'] } },
+                { $set: { status: 'failed', description: `Failed at gateway initiation: ${errMsg}` } },
+                { new: true }
             );
-            newTransaction.status = 'failed';
-            newTransaction.description = `Failed at gateway initiation: ${errMsg}`;
-            await newTransaction.save();
+
+            if (updatedTx) {
+                await User.updateOne(
+                    { _id: merchant._id },
+                    {
+                        $inc: {
+                            walletBalance: totalDeduction,
+                            totalWithdrawals: -Number(amount)
+                        }
+                    }
+                );
+            }
+            
             return res.status(500).json({ success: false, message: 'Gateway failed to initiate payout. Amount refunded.' });
         }
     } catch (error) {
@@ -317,57 +334,75 @@ export const aeroPayOutCallback = async (req, res) => {
 
         // AeroPay Payout webhook nests the data inside a 'data' key
         const data = payload.data ? payload.data : payload;
-
         const incomingSign = data.sign;
 
         if (!verifySignature(data, incomingSign)) {
-            return res.status(400).send('invalid signature');
+            return res.status(400).json({ success: false, message: 'invalid signature' });
         }
 
         const { orderNo, orderState, amount, businessNo } = data;
 
         const transaction = await Transaction.findOne({ transactionId: orderNo });
-        if (!transaction) return res.status(404).send('order not found');
-        if (transaction.status !== 'pending') return res.status(200).send('success');
+        if (!transaction) return res.status(404).json({ success: false, message: 'order not found' });
+
+        // Idempotency and State handling
+        if (transaction.status === 'failed' || transaction.status === 'refunded') {
+            return res.status(200).send('ok');
+        }
+        if (transaction.status === 'completed' && String(orderState) !== '5') {
+            return res.status(200).send('ok');
+        }
 
         if (businessNo) {
             transaction.gatewayOrderId = String(businessNo);
         }
 
         if (String(orderState) === '1') {
-            transaction.status = 'completed';
-            await transaction.save();
+            const updatedTx = await Transaction.findOneAndUpdate(
+                { transactionId: orderNo, status: { $ne: 'completed' } },
+                { $set: { status: 'completed' } },
+                { new: true }
+            );
 
-            const merchant = await User.findById(transaction.merchantId);
-            if (merchant) sendWebhookToMerchant(merchant, transaction);
+            if (!updatedTx) return res.status(200).send('ok');
 
-            return res.status(200).send('success');
-        } else if (String(orderState) === '2' || String(orderState) === '4') {
-            // Failed -> Refund
-            transaction.status = 'failed';
-            await transaction.save();
+            const merchant = await User.findById(updatedTx.merchantId);
+            if (merchant) sendWebhookToMerchant(merchant, updatedTx);
 
-            const refundAmount = transaction.amount + transaction.commissionAmount;
+            return res.status(200).send('ok');
+        } else if (['2', '4', '5'].includes(String(orderState))) {
+            // Failed (2,4) or Reversed (5) -> Refund amount + fee
+            const newStatus = String(orderState) === '5' ? 'refunded' : 'failed';
+            
+            const updatedTx = await Transaction.findOneAndUpdate(
+                { transactionId: orderNo, status: { $nin: ['failed', 'refunded'] } },
+                { $set: { status: newStatus } },
+                { new: true }
+            );
+
+            if (!updatedTx) return res.status(200).send('ok');
+
+            const refundAmount = updatedTx.amount + (updatedTx.commissionAmount || 0);
 
             const merchant = await User.findOneAndUpdate(
-                { _id: transaction.merchantId },
+                { _id: updatedTx.merchantId },
                 {
                     $inc: {
                         walletBalance: refundAmount,
-                        totalWithdrawals: -transaction.amount
+                        totalWithdrawals: -updatedTx.amount
                     }
                 },
                 { new: true }
             );
 
             if (merchant) sendWebhookToMerchant(merchant, transaction);
-            return res.status(200).send('success');
+            return res.status(200).send('ok');
         }
 
-        return res.status(200).send('success');
+        return res.status(200).send('ok');
     } catch (error) {
         console.error('AeroPay Payout Callback Error:', error);
-        res.status(500).send('server error');
+        res.status(500).json({ success: false, message: 'server error' });
     }
 };
 
@@ -441,28 +476,65 @@ export const queryPayoutOrder = async (req, res) => {
         if (transaction.status === 'pending') {
             try {
                 const upstreamStatus = await queryUpstreamPayOut(orderNo);
+
+                if (upstreamStatus && String(upstreamStatus.code) === '500' && upstreamStatus.msg && upstreamStatus.msg.includes("OrderNo not exist")) {
+                    const updatedTx = await Transaction.findOneAndUpdate(
+                        { transactionId: orderNo, status: { $nin: ['failed', 'refunded'] } },
+                        { $set: { status: 'failed' } },
+                        { new: true }
+                    );
+
+                    if (updatedTx) {
+                        const refundAmount = updatedTx.amount + (updatedTx.commissionAmount || 0);
+                        await User.findOneAndUpdate(
+                            { _id: updatedTx.merchantId },
+                            { $inc: { walletBalance: refundAmount, totalWithdrawals: -updatedTx.amount } }
+                        );
+
+                        const merchant = await User.findById(updatedTx.merchantId);
+                        if (merchant) sendWebhookToMerchant(merchant, updatedTx);
+                        
+                        transaction.status = 'failed';
+                    }
+
+                    return res.status(200).json({ success: true, status: transaction.status, amount: transaction.amount, upstreamData: upstreamStatus });
+                }
+
                 if (upstreamStatus && upstreamStatus.data) {
                     const newOrderState = String(upstreamStatus.data.orderState);
 
                     if (newOrderState === '1') {
-                        transaction.status = 'completed';
-                        await transaction.save();
+                        const updatedTx = await Transaction.findOneAndUpdate(
+                            { transactionId: orderNo, status: { $ne: 'completed' } },
+                            { $set: { status: 'completed' } },
+                            { new: true }
+                        );
 
-                        const merchant = await User.findById(transaction.merchantId);
-                        if (merchant) sendWebhookToMerchant(merchant, transaction);
+                        if (updatedTx) {
+                            const merchant = await User.findById(updatedTx.merchantId);
+                            if (merchant) sendWebhookToMerchant(merchant, updatedTx);
+                            transaction.status = 'completed';
+                        }
 
                         return res.status(200).json({ success: true, status: transaction.status, amount: transaction.amount, upstreamData: upstreamStatus });
                     } else if (newOrderState === '2' || newOrderState === '4') {
-                        transaction.status = 'failed';
-                        const refundAmount = transaction.amount + (transaction.commissionAmount || 0);
-                        await User.findOneAndUpdate(
-                            { _id: transaction.merchantId },
-                            { $inc: { walletBalance: refundAmount, totalWithdrawals: -transaction.amount } }
+                        const updatedTx = await Transaction.findOneAndUpdate(
+                            { transactionId: orderNo, status: { $nin: ['failed', 'refunded'] } },
+                            { $set: { status: 'failed' } },
+                            { new: true }
                         );
-                        await transaction.save();
 
-                        const merchant = await User.findById(transaction.merchantId);
-                        if (merchant) sendWebhookToMerchant(merchant, transaction);
+                        if (updatedTx) {
+                            const refundAmount = updatedTx.amount + (updatedTx.commissionAmount || 0);
+                            await User.findOneAndUpdate(
+                                { _id: updatedTx.merchantId },
+                                { $inc: { walletBalance: refundAmount, totalWithdrawals: -updatedTx.amount } }
+                            );
+
+                            const merchant = await User.findById(updatedTx.merchantId);
+                            if (merchant) sendWebhookToMerchant(merchant, updatedTx);
+                            transaction.status = 'failed';
+                        }
 
                         return res.status(200).json({ success: true, status: transaction.status, amount: transaction.amount, upstreamData: upstreamStatus });
                     }
@@ -642,7 +714,7 @@ export const bindPayinOrder = async (req, res) => {
         const transaction = await Transaction.findOne({ transactionId: orderNo, merchantId: req.user._id });
         if (!transaction) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
-        const upstreamStatus = await bindUpstreamOrder(orderNo, utr, amount);
+        const upstreamStatus = await bindUpstreamOrder(orderNo, utr);
         res.status(200).json({ success: true, data: upstreamStatus });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to bind order upstream' });

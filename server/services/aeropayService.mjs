@@ -75,8 +75,10 @@ export const initiatePayOut = async (orderNo, amount, bankDetails) => {
         return response.data;
     } catch (error) {
         console.error("AeroPay PayOut Error:", error.response?.data || error.message);
-        const errMsg = error.response?.data?.msg || "Gateway failed to initiate payout";
-        throw new Error(errMsg);
+        if (error.response && error.response.data) {
+            return error.response.data;
+        }
+        return { isNetworkError: true, message: error.message };
     }
 };
 
@@ -112,6 +114,9 @@ export const queryUpstreamPayOut = async (orderNo) => {
         const response = await axios.post(`${API_BASE}/payOut/query`, payload);
         return response.data;
     } catch (error) {
+        if (error.response && error.response.data) {
+            return error.response.data;
+        }
         throw new Error("Failed to query PayOut upstream");
     }
 };
@@ -184,11 +189,11 @@ export const upstreamUpiCheck = async (upiId) => {
 /**
  * Force-bind a UTR to an order upstream
  */
-export const bindUpstreamOrder = async (orderNo, utr, amount) => {
+export const bindUpstreamOrder = async (orderNo, utr) => {
     const payload = {
+        merchNo: MERCH_NO,
         orderNo,
-        utr,
-        amount: String(amount)
+        utr
     };
     payload.sign = generateSign(payload);
 

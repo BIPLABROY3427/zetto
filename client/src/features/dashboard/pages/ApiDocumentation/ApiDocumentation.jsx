@@ -3,6 +3,8 @@ import { FiBox, FiCheck, FiCode, FiCopy } from 'react-icons/fi';
 import { useAuth } from '../../../../context/AuthContext';
 import './ApiDocumentation.css';
 
+const API_BASE = import.meta.env.VITE_SERVER || 'http://localhost:5872';
+
 const payinSnippets = {
   JSON: `{
   "amount": 500,
@@ -16,7 +18,7 @@ const payinSnippets = {
   PHP: `<?php
 $curl = curl_init();
 curl_setopt_array($curl, array(
-  CURLOPT_URL => 'https://api.zetto.in/api/v1/gateway/payment',
+  CURLOPT_URL => '${API_BASE}/api/v1/gateway/payment',
   CURLOPT_RETURNTRANSFER => true,
   CURLOPT_ENCODING => '',
   CURLOPT_MAXREDIRS => 10,
@@ -55,7 +57,7 @@ let data = JSON.stringify({
 
 let config = {
   method: 'post',
-  url: 'https://api.zetto.in/api/v1/gateway/payment',
+  url: '${API_BASE}/api/v1/gateway/payment',
   headers: {
     'x-api-key': 'YOUR_API_KEY_HERE',
     'Content-Type': 'application/json'
@@ -69,7 +71,7 @@ axios.request(config)
   Python: `import requests
 import json
 
-url = "https://api.zetto.in/api/v1/gateway/payment"
+url = "${API_BASE}/api/v1/gateway/payment"
 payload = json.dumps({
   "amount": 500,
   "description": "Order #12345",
@@ -96,7 +98,7 @@ import (
 )
 
 func main() {
-  url := "https://api.zetto.in/api/v1/gateway/payment"
+  url := "${API_BASE}/api/v1/gateway/payment"
   method := "POST"
   payload := strings.NewReader("{\\"amount\\": 500, \\"description\\": \\"Order #12345\\", \\"customerDetails\\": { \\"name\\": \\"John Doe\\", \\"email\\": \\"john@example.com\\", \\"phone\\": \\"9876543210\\" } }")
 
@@ -130,7 +132,7 @@ const payoutSnippets = {
   PHP: `<?php
 $curl = curl_init();
 curl_setopt_array($curl, array(
-  CURLOPT_URL => 'https://api.zetto.in/api/v1/gateway/payout',
+  CURLOPT_URL => '${API_BASE}/api/v1/gateway/payout',
   CURLOPT_RETURNTRANSFER => true,
   CURLOPT_CUSTOMREQUEST => 'POST',
   CURLOPT_POSTFIELDS =>'{
@@ -166,7 +168,7 @@ let data = JSON.stringify({
 
 let config = {
   method: 'post',
-  url: 'https://api.zetto.in/api/v1/gateway/payout',
+  url: '${API_BASE}/api/v1/gateway/payout',
   headers: {
     'x-api-key': 'YOUR_API_KEY_HERE',
     'Content-Type': 'application/json'
@@ -180,7 +182,7 @@ axios.request(config)
   Python: `import requests
 import json
 
-url = "https://api.zetto.in/api/v1/gateway/payout"
+url = "${API_BASE}/api/v1/gateway/payout"
 payload = json.dumps({
   "amount": 1000,
   "description": "Vendor Payout",
@@ -275,7 +277,7 @@ const balanceSnippets = {
   PHP: `<?php
 $curl = curl_init();
 curl_setopt_array($curl, array(
-  CURLOPT_URL => 'https://api.zetto.in/api/v1/gateway/balance',
+  CURLOPT_URL => '${API_BASE}/api/v1/gateway/balance',
   CURLOPT_RETURNTRANSFER => true,
   CURLOPT_CUSTOMREQUEST => 'GET',
   CURLOPT_HTTPHEADER => array(
@@ -290,7 +292,7 @@ echo $response;
 
 let config = {
   method: 'get',
-  url: 'https://api.zetto.in/api/v1/gateway/balance',
+  url: '${API_BASE}/api/v1/gateway/balance',
   headers: {
     'x-api-key': 'YOUR_API_KEY_HERE'
   }
@@ -301,7 +303,7 @@ axios.request(config)
 .catch((error) => console.log(error));`,
   Python: `import requests
 
-url = "https://api.zetto.in/api/v1/gateway/balance"
+url = "${API_BASE}/api/v1/gateway/balance"
 headers = {
   'x-api-key': 'YOUR_API_KEY_HERE'
 }
@@ -407,7 +409,7 @@ const ApiDocumentation = () => {
 
             <div className="endpoint-url">
               <span className="method">POST</span>
-              <span className="url">https://api.zetto.in/api/v1/gateway/payment</span>
+              <span className="url">{API_BASE}/api/v1/gateway/payment</span>
             </div>
 
             <h4 className="section-title">Request Body</h4>
@@ -468,7 +470,7 @@ const ApiDocumentation = () => {
 
             <div className="endpoint-url">
               <span className="method">POST</span>
-              <span className="url">https://api.zetto.in/api/v1/gateway/payout</span>
+              <span className="url">{API_BASE}/api/v1/gateway/payout</span>
             </div>
 
             <h4 className="section-title">Request Body</h4>
@@ -530,7 +532,7 @@ const ApiDocumentation = () => {
 
               <div className="endpoint-url">
                 <span className="method" style={{ background: '#3b82f6' }}>GET</span>
-                <span className="url">https://api.zetto.in/api/v1/gateway/payin/query?orderNo=YOUR_ORDER_NO</span>
+                <span className="url">{API_BASE}/api/v1/gateway/payin/query?orderNo=YOUR_ORDER_NO</span>
               </div>
 
               <h4 className="section-title mt-4">Success Response</h4>
@@ -554,7 +556,7 @@ const ApiDocumentation = () => {
 
               <div className="endpoint-url">
                 <span className="method" style={{ background: '#3b82f6' }}>GET</span>
-                <span className="url">https://api.zetto.in/api/v1/gateway/payout/query?orderNo=YOUR_ORDER_NO</span>
+                <span className="url">{API_BASE}/api/v1/gateway/payout/query?orderNo=YOUR_ORDER_NO</span>
               </div>
 
               <h4 className="section-title mt-4">Success Response</h4>
@@ -580,7 +582,7 @@ const ApiDocumentation = () => {
 
             <div className="endpoint-url">
               <span className="method" style={{ background: '#3b82f6' }}>GET</span>
-              <span className="url">https://api.zetto.in/api/v1/gateway/balance</span>
+              <span className="url">{API_BASE}/api/v1/gateway/balance</span>
             </div>
 
             <h4 className="section-title mt-4">Code Examples</h4>
@@ -609,7 +611,7 @@ const ApiDocumentation = () => {
 
               <div className="endpoint-url">
                 <span className="method">POST</span>
-                <span className="url">https://api.zetto.in/api/v1/gateway/utrcheck</span>
+                <span className="url">{API_BASE}/api/v1/gateway/utrcheck</span>
               </div>
 
               <h4 className="section-title mt-4">Request Body</h4>
@@ -631,7 +633,7 @@ const ApiDocumentation = () => {
 
               <div className="endpoint-url">
                 <span className="method">POST</span>
-                <span className="url">https://api.zetto.in/api/v1/gateway/upicheck</span>
+                <span className="url">{API_BASE}/api/v1/gateway/upicheck</span>
               </div>
 
               <h4 className="section-title mt-4">Request Body</h4>
@@ -653,7 +655,7 @@ const ApiDocumentation = () => {
 
               <div className="endpoint-url">
                 <span className="method">POST</span>
-                <span className="url">https://api.zetto.in/api/v1/gateway/payin/bind</span>
+                <span className="url">{API_BASE}/api/v1/gateway/payin/bind</span>
               </div>
 
               <h4 className="section-title mt-4">Request Body</h4>

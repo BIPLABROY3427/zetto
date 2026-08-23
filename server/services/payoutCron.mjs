@@ -31,7 +31,13 @@ cron.schedule('*/5 * * * *', async () => {
                  try {
                      const aeroRes = await initiatePayOut(tx.transactionId, tx.amount, tx.customerDetails);
                      
-                     if (aeroRes.code === 0) {
+                     if (aeroRes.isNetworkError) {
+                         tx.status = 'pending';
+                         tx.description = `Processed from queue (Network/Timeout: ${aeroRes.message})`;
+                         await tx.save();
+                         availableBalance -= tx.amount; 
+                         console.log(`[PayoutQueue] Payout ${tx.transactionId} processing with network error/timeout.`);
+                     } else if (aeroRes.code === 0) {
                          // Success, mark as pending waiting for webhook
                          tx.status = 'pending';
                          tx.description = 'Processed from queue, waiting for upstream callback';
@@ -52,26 +58,30 @@ cron.schedule('*/5 * * * *', async () => {
                          // Some other hard error (e.g. bad account number) -> Fail and refund
                          console.log(`[PayoutQueue] Payout ${tx.transactionId} failed with hard error: ${errMsg}. Refunding merchant.`);
                          
-                         tx.status = 'failed';
-                         tx.description = `Failed during queue processing: ${errMsg}`;
-                         await tx.save();
-
-                         // Revert local wallet balance
-                         const refundAmount = tx.amount + (tx.commissionAmount || 0);
-                         const merchant = await User.findOneAndUpdate(
-                             { _id: tx.merchantId },
-                             {
-                                 $inc: {
-                                     walletBalance: refundAmount,
-                                     totalWithdrawals: -tx.amount
-                                 }
-                             },
+                         const updatedTx = await Transaction.findOneAndUpdate(
+                             { transactionId: tx.transactionId, status: { $nin: ['failed', 'refunded'] } },
+                             { $set: { status: 'failed', description: `Failed during queue processing: ${errMsg}` } },
                              { new: true }
                          );
 
-                         // Send failed webhook
-                         if (merchant) {
-                             sendWebhookToMerchant(merchant, tx);
+                         if (updatedTx) {
+                             // Revert local wallet balance
+                             const refundAmount = updatedTx.amount + (updatedTx.commissionAmount || 0);
+                             const merchant = await User.findOneAndUpdate(
+                                 { _id: updatedTx.merchantId },
+                                 {
+                                     $inc: {
+                                         walletBalance: refundAmount,
+                                         totalWithdrawals: -updatedTx.amount
+                                     }
+                                 },
+                                 { new: true }
+                             );
+
+                             // Send failed webhook
+                             if (merchant) {
+                                 sendWebhookToMerchant(merchant, updatedTx);
+                             }
                          }
                      }
                  }
