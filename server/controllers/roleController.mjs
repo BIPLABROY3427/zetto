@@ -5,11 +5,13 @@ import User from '../models/User.mjs';
 export const getRoles = async (req, res) => {
   try {
     const roles = await Role.find().sort({ createdAt: -1 });
-    
+
     // Get member count for each role
-    const rolesWithCount = await Promise.all(roles.map(async (role) => {
-      const count = await User.countDocuments({ role: role._id });
-      return { ...role.toObject(), members: count };
+    const rolesWithCount = await Promise.all(roles.map(async (roleDoc) => {
+      // Use flattenMaps: true to correctly convert Mongoose Maps to plain Objects
+      const role = roleDoc.toObject({ flattenMaps: true });
+      const count = await User.countDocuments({ customRole: role._id });
+      return { ...role, members: count };
     }));
 
     res.status(200).json({ status: true, roles: rolesWithCount });
@@ -23,7 +25,7 @@ export const getRoles = async (req, res) => {
 export const createRole = async (req, res) => {
   try {
     const { name, description, permissions } = req.body;
-    
+
     if (!name) {
       return res.status(400).json({ status: false, message: 'Role name is required' });
     }
@@ -74,7 +76,7 @@ export const updateRole = async (req, res) => {
 export const deleteRole = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const role = await Role.findById(id);
     if (!role) return res.status(404).json({ status: false, message: 'Role not found' });
     if (role.isSystem) return res.status(403).json({ status: false, message: 'Cannot delete system roles' });
@@ -92,3 +94,4 @@ export const deleteRole = async (req, res) => {
     res.status(500).json({ status: false, message: 'Server error deleting role' });
   }
 };
+

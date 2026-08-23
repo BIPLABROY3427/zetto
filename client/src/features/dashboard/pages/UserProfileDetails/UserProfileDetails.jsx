@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../../../services/apiClient';
-import { toast } from 'react-toastify';
+import { useEffect, useState } from 'react';
 import {
-  FiArrowLeft, FiUser, FiDollarSign, FiSettings,
-  FiArrowDownLeft, FiArrowUpRight
+  FiArrowDownLeft,
+  FiArrowLeft,
+  FiArrowUpRight,
+  FiDollarSign, FiSettings,
+  FiUser
 } from 'react-icons/fi';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import Pagination from '../../../../components/ui/Pagination/Pagination';
+import api from '../../../../services/apiClient';
 import './UserProfileDetails.css';
 
 const statusClass = (s) => {
@@ -20,6 +24,9 @@ const UserProfileDetails = () => {
   const [user, setUser] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState(null);
 
   useEffect(() => {
     if (!id) return;
@@ -30,16 +37,26 @@ const UserProfileDetails = () => {
         const found = usersRes.data.users.find(u => u._id === id);
         if (!found) { toast.error('User not found'); return; }
         setUser(found);
-        const txRes = await api.get(`/users/${id}/transactions`);
-        setTransactions(txRes.data.data || []);
       } catch { toast.error('Failed to load user details'); }
       finally { setLoading(false); }
     };
     load();
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    const loadTransactions = async () => {
+      try {
+        const txRes = await api.get(`/users/${id}/transactions`, { params: { page, limit } });
+        setTransactions(txRes.data.data || []);
+        setPagination(txRes.data.pagination);
+      } catch { toast.error('Failed to load user transactions'); }
+    };
+    loadTransactions();
+  }, [id, page, limit]);
+
   if (loading) return <div className="pg-root"><div className="pg-loading">Loading profile...</div></div>;
-  if (!user)   return <div className="pg-root"><div className="pg-empty"><p>User not found</p></div></div>;
+  if (!user) return <div className="pg-root"><div className="pg-empty"><p>User not found</p></div></div>;
 
   const initials = (user.name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
@@ -101,13 +118,38 @@ const UserProfileDetails = () => {
               ['Wallet Balance', `₹${(user.walletBalance || 0).toLocaleString('en-IN')}`],
               ['Payout Balance', `₹${(user.payoutBalance || 0).toLocaleString('en-IN')}`],
               ['Frozen Amount', `₹${(user.frozenAmount || 0).toLocaleString('en-IN')}`],
-              ['Frozen Reason', user.frozenReason || 'None'],
             ].map(([k, v]) => (
               <div key={k} className="pg-info-item">
                 <span className="pg-info-label">{k}</span>
                 <span className="pg-info-value">{v}</span>
               </div>
             ))}
+
+            {user.frozenDetails && user.frozenDetails.length > 0 && (
+              <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                <h5 style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>Active Freezes</h5>
+                <table className="pg-table" style={{ fontSize: '12px', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '6px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
+                      <th style={{ padding: '6px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Reason</th>
+                      <th style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {user.frozenDetails.map((f, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '6px', borderBottom: '1px solid #e2e8f0' }}>{new Date(f.createdAt).toLocaleDateString('en-IN')}</td>
+                        <td style={{ padding: '6px', borderBottom: '1px solid #e2e8f0' }}>{f.reason}</td>
+                        <td style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e2e8f0', fontWeight: 500, color: '#ef4444' }}>
+                          ₹{Number(f.amount).toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -139,7 +181,7 @@ const UserProfileDetails = () => {
             <span className="pg-card-title-icon"><FiArrowDownLeft /></span>
             Recent Transactions
           </h4>
-          <span className="tk-count">{transactions.length} records</span>
+          <span className="tk-count">{pagination?.totalRecords || transactions.length} records</span>
         </div>
         <div className="pg-table-wrap">
           {transactions.length === 0 ? (
@@ -150,6 +192,7 @@ const UserProfileDetails = () => {
                 <tr>
                   <th>Type</th>
                   <th>Amount</th>
+                  <th>Tax/Fee</th>
                   <th>Transaction ID</th>
                   <th>Status</th>
                   <th>Webhook</th>
@@ -160,11 +203,12 @@ const UserProfileDetails = () => {
                 {transactions.map(tx => (
                   <tr key={tx._id}>
                     <td>
-                      <span className={`pg-badge ${tx.type === 'payment' ? 'pg-badge-blue' : 'pg-badge-amber'}`}>
-                        {tx.type === 'payment' ? <><FiArrowDownLeft /> Payin</> : <><FiArrowUpRight /> Payout</>}
+                      <span className={`pg-badge ${tx.type === 'payment' ? 'pg-badge-blue' : tx.type === 'withdrawal' ? 'pg-badge-amber' : tx.type === 'freeze' ? 'pg-badge-red' : 'pg-badge-green'}`}>
+                        {tx.type === 'payment' ? <><FiArrowDownLeft /> Payin</> : tx.type === 'withdrawal' ? <><FiArrowUpRight /> Payout</> : tx.type === 'freeze' ? <><FiArrowUpRight /> Freeze</> : <><FiArrowDownLeft /> Unfreeze</>}
                       </span>
                     </td>
                     <td style={{ fontWeight: 700 }}>₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td style={{ color: '#ef4444' }}>₹{Number(tx.commissionAmount || 0).toLocaleString('en-IN')}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary)' }}>{tx.transactionId}</td>
                     <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
                     <td><span className={statusClass(tx.webhookStatus || 'pending')}>{tx.webhookStatus || 'pending'}</span></td>
@@ -176,6 +220,11 @@ const UserProfileDetails = () => {
               </tbody>
             </table>
           )}
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </div>
       </div>
     </div>

@@ -1,12 +1,5 @@
 import mongoose from 'mongoose';
 
-const apiKeySchema = new mongoose.Schema({
-  key: { type: String, required: true, },
-  name: { type: String, default: 'Default API Key', },
-  isActive: { type: Boolean, default: true, },
-  createdAt: { type: Date, default: Date.now, }
-});
-
 const merchantSchema = new mongoose.Schema({
   name: { type: String, required: [true, 'Please provide a name'], trim: true, maxlength: [50, 'Name cannot be more than 50 characters'], },
   email: {
@@ -22,7 +15,7 @@ const merchantSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false, // Don't return password by default
   },
-  apiKeys: [apiKeySchema],
+  apiKey: { type: String, default: '' },
   resetPasswordOtp: String,
   resetPasswordExpires: Date,
   isVerified: { type: Boolean, default: false, }, // Could be used in future for email verification

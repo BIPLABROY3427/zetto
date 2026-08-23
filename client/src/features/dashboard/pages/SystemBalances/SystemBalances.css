@@ -1,0 +1,66 @@
+.sys-bal-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.sys-bal-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.sys-bal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.sys-bal-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sys-bal-info {
+  flex: 1;
+}
+
+.sys-bal-info h4 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.sys-bal-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  font-family: monospace;
+}
+
+.sys-bal-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sys-bal-search {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sys-bal-search input {
+  max-width: 250px;
+}

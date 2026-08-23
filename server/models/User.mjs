@@ -1,13 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
-const apiKeySchema = new mongoose.Schema({
-  key: { type: String, required: true },
-  name: { type: String, default: 'Default API Key' },
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -25,7 +18,6 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters long'],
     },
     role: {
       type: String,
@@ -45,8 +37,21 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // --- KYC Fields ---
+    kycStatus: {
+      type: String,
+      enum: ['pending', 'submitted', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    kycDocuments: [
+      {
+        docType: { type: String, enum: ['Aadhar', 'PAN', 'Other'] },
+        url: { type: String }
+      }
+    ],
+    kycRejectionReason: { type: String, default: '' },
     // --- Merchant specific fields ---
-    apiKeys: [apiKeySchema],
+    apiKey: { type: String, default: '' },
     businessName: { type: String, trim: true, default: '' },
     website: { type: String, trim: true, default: '' },
     phoneNumber: { type: String, trim: true, default: '' },
@@ -54,7 +59,13 @@ const userSchema = new mongoose.Schema(
     webhookSecret: { type: String, default: '' },
     walletBalance: { type: Number, default: 0 },
     frozenAmount: { type: Number, default: 0 },
-    frozenReason: { type: String, trim: true, default: '' },
+    frozenDetails: [
+      {
+        amount: { type: Number, required: true },
+        reason: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
     isVip: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     isPayinEnabled: { type: Boolean, default: true },

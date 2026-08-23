@@ -9,10 +9,9 @@ export const apiKeyAuth = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'API Key is missing' });
     }
 
-    // Find a merchant (user) that has this exact active api key inside their apiKeys array
+    // Find a merchant (user) that has this exact active api key
     const merchant = await User.findOne({
-      'apiKeys.key': apiKey,
-      'apiKeys.isActive': true
+      apiKey: apiKey
     });
 
     if (!merchant) {

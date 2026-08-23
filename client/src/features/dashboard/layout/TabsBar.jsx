@@ -1,6 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FiX } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { useTabs } from '../../../context/TabsContext';
 import './TabsBar.css';
 
@@ -11,14 +10,14 @@ const TabsBar = () => {
   return (
     <div className="tabs-bar-container">
       {tabs.map((tab) => (
-        <div 
+        <div
           key={tab.path}
           className={`tab-item ${currentPath === tab.path ? 'active' : ''}`}
           onClick={() => navigate(tab.path)}
         >
           <span className="tab-label">{tab.label}</span>
           {tabs.length > 1 && (
-            <span 
+            <span
               className="tab-close"
               onClick={(e) => removeTab(tab.path, e)}
             >

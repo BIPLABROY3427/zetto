@@ -12,9 +12,7 @@ const DashboardLayout = lazy(() => import("./features/dashboard/layout/Dashboard
 const Overview = lazy(() => import("./features/dashboard/pages/Overview/Overview"));
 const BasicSetting = lazy(() => import("./features/dashboard/pages/BasicSetting/BasicSetting"));
 const PayinOrder = lazy(() => import("./features/dashboard/pages/PayinOrder/PayinOrder"));
-const PayinHistory = lazy(() => import("./features/dashboard/pages/PayinHistory/PayinHistory"));
 const PayoutOrder = lazy(() => import("./features/dashboard/pages/PayoutOrder/PayoutOrder"));
-const PayoutHistory = lazy(() => import("./features/dashboard/pages/PayoutHistory/PayoutHistory"));
 const DailySummary = lazy(() => import("./features/dashboard/pages/DailySummary/DailySummary"));
 const BalDaySum = lazy(() => import("./features/dashboard/pages/BalDaySum/BalDaySum"));
 const Tickets = lazy(() => import("./features/dashboard/pages/Tickets/Tickets"));
@@ -22,6 +20,7 @@ const UserManagement = lazy(() => import("./features/dashboard/pages/UserManagem
 const RolesAndPermissions = lazy(() => import("./features/dashboard/pages/RolesAndPermissions/RolesAndPermissions"));
 const SuperAdminOverview = lazy(() => import("./features/dashboard/pages/SuperAdminOverview/SuperAdminOverview"));
 const SystemTransactions = lazy(() => import("./features/dashboard/pages/SystemTransactions/SystemTransactions"));
+const SystemBalances = lazy(() => import("./features/dashboard/pages/SystemBalances/SystemBalances"));
 const ApiDocumentation = lazy(() => import("./features/dashboard/pages/ApiDocumentation/ApiDocumentation"));
 const UserProfileDetails = lazy(() => import("./features/dashboard/pages/UserProfileDetails/UserProfileDetails"));
 const AccountSettings = lazy(() => import("./features/dashboard/pages/AccountSettings/AccountSettings"));
@@ -102,12 +101,10 @@ const App = () => {
 
               <Route element={<PermissionRoute moduleName="Payin Management" />}>
                 <Route path="payin" element={<PayinOrder />} />
-                <Route path="payin-history" element={<PayinHistory />} />
               </Route>
 
               <Route element={<PermissionRoute moduleName="Payout Management" />}>
                 <Route path="payout" element={<PayoutOrder />} />
-                <Route path="payout-history" element={<PayoutHistory />} />
               </Route>
 
               <Route element={<PermissionRoute moduleName="Transaction History" />}>
@@ -119,22 +116,28 @@ const App = () => {
                 <Route path="tickets" element={<Tickets />} />
               </Route>
 
-              <Route element={<PermissionRoute moduleName="API Documentation" />}>
-                <Route path="api-docs" element={<ApiDocumentation />} />
-              </Route>
+              <Route path="api-docs" element={<ApiDocumentation />} />
 
               {/* ADMIN / SUPERADMIN ROUTES */}
               <Route element={<AdminRoute />}>
                 <Route element={<PermissionRoute moduleName="User Management" />}>
                   <Route path="users" element={<UserManagement />} />
+                  <Route path="users/:id" element={<UserProfileDetails />} />
                 </Route>
                 <Route path="roles-permissions" element={<RolesAndPermissions />} />
-                <Route path="system-overview" element={<SuperAdminOverview />} />
-                <Route path="system-transactions" element={<SystemTransactions initialType="all" />} />
-                <Route path="system-payins" element={<SystemTransactions initialType="payment" />} />
-                <Route path="system-payouts" element={<SystemTransactions initialType="withdrawal" />} />
-                <Route path="system-balances" element={<UserManagement />} />
-                <Route path="users/:id" element={<UserProfileDetails />} />
+                <Route element={<PermissionRoute moduleName="Dashboard Overview" />}>
+                  <Route path="system-overview" element={<SuperAdminOverview />} />
+                </Route>
+                <Route element={<PermissionRoute moduleName="Transaction History" />}>
+                  <Route path="system-transactions" element={<SystemTransactions initialType="all" />} />
+                  <Route path="system-balances" element={<SystemBalances />} />
+                </Route>
+                <Route element={<PermissionRoute moduleName="Payin Management" />}>
+                  <Route path="system-payins" element={<SystemTransactions initialType="payment" />} />
+                </Route>
+                <Route element={<PermissionRoute moduleName="Payout Management" />}>
+                  <Route path="system-payouts" element={<SystemTransactions initialType="withdrawal" />} />
+                </Route>
               </Route>
             </Route>
           </Route>

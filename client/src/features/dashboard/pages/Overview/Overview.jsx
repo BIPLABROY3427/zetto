@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  FiActivity, FiPieChart, FiDollarSign,
-  FiPercent, FiKey, FiSettings,
-  FiTrendingUp, FiArrowDownLeft, FiArrowUpRight,
-  FiChevronRight, FiChevronDown, FiAlertTriangle,
-  FiRefreshCw, FiCopy, FiCheck
+  FiActivity,
+  FiAlertTriangle,
+  FiArrowDownLeft, FiArrowUpRight,
+  FiChevronDown,
+  FiChevronRight,
+  FiDollarSign,
+  FiPercent,
+  FiRefreshCw
 } from 'react-icons/fi';
-import api from '../../../../services/apiClient';
 import { toast } from 'react-toastify';
-import ConfirmDialog from '../../../../components/ui/ConfirmDialog/ConfirmDialog';
-import useConfirm from '../../../../components/ui/ConfirmDialog/useConfirm';
+import api from '../../../../services/apiClient';
+import KLineChart from './KLineChart';
 import './Overview.css';
 
 /* ── Collapsible Section ─────────────────────── */
@@ -35,11 +37,7 @@ const Section = ({ title, icon: Icon, children, defaultOpen = false }) => {
 const Overview = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [payInUrl, setPayInUrl] = useState('');
-  const [payOutUrl, setPayOutUrl] = useState('');
-  const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { confirm, confirmProps } = useConfirm();
 
   const fetchStats = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -47,10 +45,6 @@ const Overview = () => {
     try {
       const response = await api.get('/dashboard/stats');
       setData(response.data);
-      if (response.data.settings) {
-        setPayInUrl(response.data.settings.callbackUrl || '');
-        setPayOutUrl(response.data.settings.callbackUrl || '');
-      }
     } catch {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -60,40 +54,6 @@ const Overview = () => {
   };
 
   useEffect(() => { fetchStats(); }, []);
-
-  const handleResetApiKey = async () => {
-    const ok = await confirm({
-      title: 'Reset API Key?',
-      message: 'This will immediately invalidate your current API key. Any active integrations using the old key will stop working.',
-      confirmText: 'Yes, Reset Key',
-      cancelText: 'Cancel',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    try {
-      await api.post('/dashboard/settings/apikey/reset');
-      toast.success('API Key reset successfully');
-      fetchStats(false);
-    } catch {
-      toast.error('Failed to reset API key');
-    }
-  };
-
-  const handleUpdateWebhooks = async () => {
-    try {
-      await api.put('/dashboard/settings/webhooks', { callbackUrl: payInUrl });
-      toast.success('Webhook URLs updated');
-    } catch {
-      toast.error('Failed to update webhooks');
-    }
-  };
-
-  const handleCopyKey = () => {
-    if (!data?.settings?.activeApiKey) return;
-    navigator.clipboard.writeText(data.settings.activeApiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   if (loading) {
     return (
@@ -105,9 +65,9 @@ const Overview = () => {
   }
   if (!data) return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Failed to load data.</div>;
 
-  const todayIn  = data.stats.todayStats || {};
-  const inRate   = (todayIn.inSuccRate  || 0).toFixed(2);
-  const outRate  = (todayIn.outSuccRate || 0).toFixed(2);
+  const todayIn = data.stats.todayStats || {};
+  const inRate = (todayIn.inSuccRate || 0).toFixed(2);
+  const outRate = (todayIn.outSuccRate || 0).toFixed(2);
   const commission = data.settings?.commission || {};
 
   return (
@@ -176,11 +136,11 @@ const Overview = () => {
               <div className="ov-ratio-stats">
                 <div className="ov-ratio-stat">
                   <span className="ov-ratio-stat-label">Success Amount</span>
-                  <span className="ov-ratio-stat-value green">₹{todayIn.inSuccAmount || 0}</span>
+                  <span className="ov-ratio-stat-value green">₹{Number(todayIn.inSuccAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="ov-ratio-stat">
                   <span className="ov-ratio-stat-label">Total Amount</span>
-                  <span className="ov-ratio-stat-value">₹{todayIn.inAmount || 0}</span>
+                  <span className="ov-ratio-stat-value">₹{Number(todayIn.inAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -202,11 +162,11 @@ const Overview = () => {
               <div className="ov-ratio-stats">
                 <div className="ov-ratio-stat">
                   <span className="ov-ratio-stat-label">Success Amount</span>
-                  <span className="ov-ratio-stat-value green">₹{todayIn.outSuccAmount || 0}</span>
+                  <span className="ov-ratio-stat-value green">₹{Number(todayIn.outSuccAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 <div className="ov-ratio-stat">
                   <span className="ov-ratio-stat-label">Total Amount</span>
-                  <span className="ov-ratio-stat-value">₹{todayIn.outAmount || 0}</span>
+                  <span className="ov-ratio-stat-value">₹{Number(todayIn.outAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -223,49 +183,11 @@ const Overview = () => {
         </div>
       </Section>
 
-      {/* ── K-Line Chart Placeholder ── */}
-      <Section title="K-Line Chart" icon={FiPieChart}>
-        <div className="ov-chart-placeholder">
-          <FiPieChart />
-          <p>Chart visualization coming soon</p>
-        </div>
-      </Section>
-
-      {/* ── Money Detail ── */}
-      <Section title="Money Detail" icon={FiDollarSign} defaultOpen={true}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="ov-table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Currency</th>
-                <th>Balance</th>
-                <th>Available</th>
-                <th>Frozen</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ fontWeight: 600 }}>{data.user?.name || 'Merchant'}</td>
-                <td><span className="ov-badge inr">INR</span></td>
-                <td style={{ fontWeight: 600 }}>₹{(data.stats.walletBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                <td style={{ color: '#10b981', fontWeight: 600 }}>₹{(data.stats.walletBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                <td>₹0.00</td>
-                <td>
-                  <div className="ov-table-actions">
-                    <button className="ov-action-btn danger">Withdraw</button>
-                    <button className="ov-action-btn">History</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </Section>
+      {/* ── K-Line Chart ── */}
+      <KLineChart />
 
       {/* ── Fee Rate Info ── */}
-      <Section title="Fee Rate Info" icon={FiPercent}>
+      <Section title="Fee Rate Info" icon={FiPercent} defaultOpen={true}>
         <div style={{ overflowX: 'auto' }}>
           <table className="ov-table">
             <thead>
@@ -300,61 +222,6 @@ const Overview = () => {
         </div>
       </Section>
 
-      {/* ── API Key ── */}
-      <Section title="API Key" icon={FiKey}>
-        <div className="ov-api-key-block">
-          <span className="ov-api-key-label">API Key</span>
-          <span className="ov-api-key-value">
-            {data.settings?.activeApiKey || '••••••••••••••••••••••••••••••••'}
-          </span>
-          <button
-            className="ov-action-btn"
-            style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-            onClick={handleCopyKey}
-          >
-            {copied ? <FiCheck style={{ color: '#10b981' }} /> : <FiCopy />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-        <button className="ov-btn-danger" onClick={handleResetApiKey}>
-          Reset API Key
-        </button>
-      </Section>
-
-      {/* ── Merchant Settings ── */}
-      <Section title="Merchant Settings" icon={FiSettings}>
-        <div className="ov-webhook-form">
-          <div className="ov-form-row">
-            <label className="ov-form-label">
-              <span>*</span>PayIn Notify URL
-            </label>
-            <input
-              type="url"
-              className="ov-form-input"
-              placeholder="https://yourdomain.com/payin-callback"
-              value={payInUrl}
-              onChange={e => setPayInUrl(e.target.value)}
-            />
-          </div>
-          <div className="ov-form-row">
-            <label className="ov-form-label">
-              <span>*</span>PayOut Notify URL
-            </label>
-            <input
-              type="url"
-              className="ov-form-input"
-              placeholder="https://yourdomain.com/payout-callback"
-              value={payOutUrl}
-              onChange={e => setPayOutUrl(e.target.value)}
-            />
-          </div>
-          <button className="ov-btn-confirm" onClick={handleUpdateWebhooks}>
-            Save Webhook URLs
-          </button>
-        </div>
-      </Section>
-
-      <ConfirmDialog {...confirmProps} />
     </div>
   );
 };

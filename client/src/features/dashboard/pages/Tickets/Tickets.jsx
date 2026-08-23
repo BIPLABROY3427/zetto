@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import api from '../../../../services/apiClient';
-import { useAuth } from '../../../../context/AuthContext';
+import { useEffect, useRef, useState } from 'react';
+import { FiCheckCircle, FiMessageSquare, FiPlus, FiRefreshCw, FiSend, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-import { FiPlus, FiMessageSquare, FiX, FiSend, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
+import Pagination from '../../../../components/ui/Pagination/Pagination';
+import { useAuth } from '../../../../context/AuthContext';
+import api from '../../../../services/apiClient';
 import './Tickets.css';
 
 const Tickets = () => {
@@ -18,10 +19,13 @@ const Tickets = () => {
   const [chatMessage, setChatMessage] = useState('');
   const messagesEndRef = useRef(null);
   const pollingRef = useRef(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState(null);
 
   const isAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin';
 
-  useEffect(() => { fetchTickets(); return () => stopPolling(); }, []);
+  useEffect(() => { fetchTickets(); return () => stopPolling(); }, [page, limit]);
 
   useEffect(() => {
     if (activeTicket) { startPolling(activeTicket._id); scrollToBottom(); markAsRead(activeTicket._id); }
@@ -35,8 +39,9 @@ const Tickets = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/v1/tickets');
+      const res = await api.get('/v1/tickets', { params: { page, limit } });
       setTickets(res.data.tickets || []);
+      setPagination(res.data.pagination);
     } catch { toast.error('Failed to load tickets'); }
     finally { setLoading(false); }
   };
@@ -62,7 +67,7 @@ const Tickets = () => {
           if (res.data.ticket.messages.length > prev.messages.length) return res.data.ticket;
           return prev;
         });
-      } catch {}
+      } catch { }
     }, 5000);
   };
 
@@ -83,10 +88,10 @@ const Tickets = () => {
     try {
       await api.put(`/v1/tickets/${ticketId}/read`);
       setTickets(prev => prev.map(t => t._id === ticketId
-        ? { ...t, messages: t.messages.map(m => m.senderId._id !== currentUser.id ? { ...m, read: true } : m) }
+        ? { ...t, messages: t.messages.map(m => m.senderId._id !== (currentUser._id || currentUser.id) ? { ...m, read: true } : m) }
         : t
       ));
-    } catch {}
+    } catch { }
   };
 
   const updateTicketStatus = async (status) => {
@@ -100,7 +105,7 @@ const Tickets = () => {
   };
 
   const getUnreadCount = (ticket) =>
-    ticket.messages.filter(m => !m.read && m.senderId._id !== currentUser.id).length;
+    ticket.messages.filter(m => !m.read && m.senderId._id !== (currentUser._id || currentUser.id)).length;
 
   const statusBadge = (s) => {
     if (s === 'resolved') return 'pg-status pg-status-completed';
@@ -126,58 +131,92 @@ const Tickets = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="pg-card">
         <div className="pg-card-header">
           <h4 className="pg-card-title">
             <span className="pg-card-title-icon"><FiMessageSquare /></span>
             All Tickets
           </h4>
-          <span className="tk-count">{tickets.length} tickets</span>
+          <span className="tk-count">{pagination?.totalRecords || tickets.length} tickets</span>
         </div>
         <div className="pg-table-wrap">
           {loading ? (
             <div className="pg-loading"><FiRefreshCw /> Loading...</div>
           ) : (
-            <table className="pg-table">
-              <thead>
-                <tr>
-                  <th>Ticket ID</th>
-                  {isAdmin && <th>Merchant</th>}
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Last Updated</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Desktop Table */}
+              <table className="pg-table tk-desktop-table">
+                <thead>
+                  <tr>
+                    <th>Ticket ID</th>
+                    {isAdmin && <th>Merchant</th>}
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Last Updated</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.length === 0 ? (
+                    <tr><td colSpan={isAdmin ? 6 : 5}>
+                      <div className="pg-empty"><p>No tickets found</p></div>
+                    </td></tr>
+                  ) : tickets.map(ticket => {
+                    const unread = getUnreadCount(ticket);
+                    return (
+                      <tr key={ticket._id}>
+                        <td className="tk-id">#{ticket._id.substring(18)}</td>
+                        {isAdmin && <td className="tk-merchant">{ticket.merchantId?.name || 'Unknown'}</td>}
+                        <td className="tk-subject">
+                          <span style={{ fontWeight: unread > 0 ? 700 : 500 }}>{ticket.subject}</span>
+                          {unread > 0 && <span className="tk-unread-badge">{unread} New</span>}
+                        </td>
+                        <td><span className={statusBadge(ticket.status)}>{ticket.status.replace('_', ' ')}</span></td>
+                        <td className="tk-date">{new Date(ticket.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                        <td>
+                          <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => setActiveTicket(ticket)}>
+                            <FiMessageSquare /> Chat
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {/* Mobile Cards */}
+              <div className="tk-mobile-card-list">
                 {tickets.length === 0 ? (
-                  <tr><td colSpan={isAdmin ? 6 : 5}>
-                    <div className="pg-empty"><p>No tickets found</p></div>
-                  </td></tr>
+                  <div className="pg-empty"><p>No tickets found</p></div>
                 ) : tickets.map(ticket => {
                   const unread = getUnreadCount(ticket);
                   return (
-                    <tr key={ticket._id}>
-                      <td className="tk-id">#{ticket._id.substring(18)}</td>
-                      {isAdmin && <td className="tk-merchant">{ticket.merchantId?.name || 'Unknown'}</td>}
-                      <td className="tk-subject">
-                        <span style={{ fontWeight: unread > 0 ? 700 : 500 }}>{ticket.subject}</span>
-                        {unread > 0 && <span className="tk-unread-badge">{unread} New</span>}
-                      </td>
-                      <td><span className={statusBadge(ticket.status)}>{ticket.status.replace('_', ' ')}</span></td>
-                      <td className="tk-date">{new Date(ticket.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                      <td>
-                        <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => setActiveTicket(ticket)}>
-                          <FiMessageSquare /> Chat
-                        </button>
-                      </td>
-                    </tr>
+                    <div key={ticket._id} className="tk-mobile-card" onClick={() => setActiveTicket(ticket)}>
+                      <div className="tk-mobile-card-top">
+                        <div className="tk-mobile-card-subject">
+                          {ticket.subject}
+                          {unread > 0 && <span className="tk-unread-badge">{unread} New</span>}
+                        </div>
+                        <span className={statusBadge(ticket.status)}>{ticket.status.replace('_', ' ')}</span>
+                      </div>
+                      <div className="tk-mobile-card-meta">
+                        <span className="tk-mobile-card-id">#{ticket._id.substring(18)}</span>
+                        <span>{new Date(ticket.updatedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</span>
+                      </div>
+                      {isAdmin && ticket.merchantId?.name && (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>👤 {ticket.merchantId.name}</div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </div>
       </div>
 
@@ -237,7 +276,7 @@ const Tickets = () => {
             {/* Messages */}
             <div className="tk-messages">
               {activeTicket.messages.map(msg => {
-                const isMe = msg.senderId._id === currentUser.id;
+                const isMe = msg.senderId._id === (currentUser._id || currentUser.id);
                 return (
                   <div key={msg._id} className={`tk-bubble-wrap ${isMe ? 'me' : 'them'}`}>
                     <div className={`tk-bubble ${isMe ? 'tk-bubble-me' : 'tk-bubble-them'}`}>

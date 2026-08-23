@@ -1,7 +1,6 @@
 .api-docs-container {
   padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .api-card {
@@ -190,4 +189,42 @@
   font-size: 13px;
   color: #e2e8f0;
   line-height: 1.5;
+}
+
+/* ── API Tabs ── */
+.api-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.api-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.api-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.api-tab-btn:hover {
+  color: #0f172a;
+}
+
+.api-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
 }

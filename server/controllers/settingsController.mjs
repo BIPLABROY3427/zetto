@@ -1,5 +1,6 @@
 import User from '../models/User.mjs';
 import crypto from 'crypto';
+import { logActivity } from '../services/activityLogger.mjs';
 
 /**
  * @desc    Update Merchant Webhook Settings (callbackUrl)
@@ -28,6 +29,9 @@ export const updateWebhooks = async (req, res) => {
                 webhookSecret: updatedUser.webhookSecret
             }
         });
+
+        logActivity(userId, 'settings_update', 'Updated webhook URL and secret', req);
+
     } catch (error) {
         console.error('Update Webhooks Error:', error);
         res.status(500).json({ success: false, message: 'Server error updating webhooks' });
@@ -43,37 +47,23 @@ export const resetApiKey = async (req, res) => {
     try {
         const userId = req.user._id;
         
-        // Deactivate all existing keys
-        await User.updateOne(
-            { _id: userId },
-            { $set: { "apiKeys.$[].isActive": false } }
-        );
+        // Generate a new 16-character alphanumeric API key (crypto hex)
+        const newKey = crypto.randomBytes(8).toString('hex');
 
-        // Generate a new secure API key
-        const newKey = crypto.randomBytes(32).toString('hex');
-
-        // Add new active key
+        // Update apiKey field
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            {
-                $push: {
-                    apiKeys: {
-                        key: newKey,
-                        name: 'Primary API Key',
-                        isActive: true
-                    }
-                }
-            },
+            { $set: { apiKey: newKey } },
             { new: true }
         );
-
-        const activeKey = updatedUser.apiKeys.find(k => k.isActive)?.key;
 
         res.status(200).json({
             success: true,
             message: 'API Key reset successfully',
-            activeApiKey: activeKey
+            activeApiKey: updatedUser.apiKey
         });
+
+        logActivity(userId, 'settings_update', 'Rotated API Secret Key', req);
 
     } catch (error) {
         console.error('Reset API Key Error:', error);

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../../../services/apiClient';
+import { useEffect, useState } from 'react';
+import { FiBarChart2, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-import { FiSearch, FiRefreshCw, FiBarChart2 } from 'react-icons/fi';
+import api from '../../../../services/apiClient';
 import './BalDaySum.css';
 
 const statusClass = (s) => {
@@ -31,7 +31,7 @@ const BalDaySum = () => {
   useEffect(() => { fetchTransactions(); }, [status]);
   const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
 
-  const totalIn  = data.filter(tx => tx.status === 'completed').reduce((s, tx) => s + (tx.amount || 0), 0);
+  const totalIn = data.filter(tx => tx.status === 'completed').reduce((s, tx) => s + (tx.amount || 0), 0);
   const totalAll = data.reduce((s, tx) => s + (tx.amount || 0), 0);
 
   return (

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../../../services/apiClient';
+import { useEffect, useState } from 'react';
+import { FiArrowDownLeft, FiDownload, FiRefreshCw, FiRotateCw, FiSearch } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-import { FiSearch, FiRefreshCw, FiArrowDownLeft, FiRotateCw } from 'react-icons/fi';
+import Pagination from '../../../../components/ui/Pagination/Pagination';
+import api from '../../../../services/apiClient';
+import { exportToCsv } from '../../../../utils/exportCsv';
 import './PayinHistory.css';
 
 const statusClass = (s) => {
@@ -15,12 +17,16 @@ const PayinHistory = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState(null);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/dashboard/transactions', { params: { type: 'payment', search, status } });
+      const res = await api.get('/dashboard/transactions', { params: { type: 'payment', search, status, page, limit } });
       setData(res.data.data || []);
+      setPagination(res.data.pagination);
     } catch {
       toast.error('Failed to fetch Payin History');
     } finally {
@@ -28,9 +34,9 @@ const PayinHistory = () => {
     }
   };
 
-  useEffect(() => { fetchTransactions(); }, [status]);
+  useEffect(() => { fetchTransactions(); }, [status, page, limit]);
 
-  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
+  const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchTransactions(); };
 
   const handleResendWebhook = async (id) => {
     try {
@@ -42,6 +48,18 @@ const PayinHistory = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to resend webhook');
     }
+  };
+
+  const handleExport = () => {
+    const exportData = data.map(tx => ({
+      'Order ID': tx.transactionId,
+      'Amount': tx.amount,
+      'Currency': 'INR',
+      'Status': tx.status,
+      'Webhook Status': tx.webhookStatus,
+      'Date': new Date(tx.createdAt).toLocaleString()
+    }));
+    exportToCsv('payin_history.csv', exportData);
   };
 
   return (
@@ -73,7 +91,12 @@ const PayinHistory = () => {
             <span className="pg-card-title-icon"><FiArrowDownLeft /></span>
             Payin History
           </h4>
-          <span className="ph-count">{data.length} records</span>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span className="ph-count">{pagination?.totalRecords || data.length} records</span>
+            <button className="pg-btn pg-btn-primary pg-btn-sm" onClick={handleExport} disabled={data.length === 0}>
+              <FiDownload /> Export
+            </button>
+          </div>
         </div>
         <div className="pg-table-wrap">
           {loading ? (
@@ -84,6 +107,7 @@ const PayinHistory = () => {
                 <tr>
                   <th>Order ID</th>
                   <th>Amount</th>
+                  <th>Tax/Fee</th>
                   <th>Currency</th>
                   <th>Status</th>
                   <th>Webhook</th>
@@ -96,8 +120,16 @@ const PayinHistory = () => {
                   <tr><td colSpan="7"><div className="pg-empty"><p>No history found</p></div></td></tr>
                 ) : data.map(tx => (
                   <tr key={tx._id}>
-                    <td className="ph-id">{tx.transactionId}</td>
+                    <td className="ph-id">
+                      <div>{tx.transactionId}</div>
+                      {tx.gatewayOrderId && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '2px', fontFamily: 'monospace' }}>
+                          UTR: {tx.gatewayOrderId}
+                        </div>
+                      )}
+                    </td>
                     <td className="ph-amount">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td className="ph-amount" style={{ color: '#ef4444' }}>₹{Number(tx.commissionAmount || 0).toLocaleString('en-IN')}</td>
                     <td><span className="pg-badge pg-badge-inr">INR</span></td>
                     <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
                     <td>
@@ -119,6 +151,11 @@ const PayinHistory = () => {
               </tbody>
             </table>
           )}
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </div>
       </div>
     </div>

@@ -7,11 +7,10 @@ export const apiOrJwtAuth = async (req, res, next) => {
     const apiKey = req.header('x-api-key');
     if (apiKey) {
       const merchant = await User.findOne({
-        'apiKeys.key': apiKey,
-        'apiKeys.isActive': true
+        apiKey: apiKey
       });
 
-      if (!merchant) {
+      if (!merchant || apiKey === '') {
         return res.status(401).json({ success: false, message: 'Invalid or inactive API Key' });
       }
 

@@ -62,6 +62,11 @@ const ConfirmDialog = ({
       onClick={(e) => { if (e.target === e.currentTarget) onCancel?.(); }}
     >
       <div className={`cd-box cd-${variant}`}>
+        {/* Absolute Close Button */}
+        <button className="cd-close-abs" onClick={onCancel} aria-label="Close">
+          <FiX />
+        </button>
+
         {/* Icon */}
         <div className={`cd-icon-wrap cd-icon-${variant}`}>
           {ICON_MAP[variant]}
@@ -70,9 +75,6 @@ const ConfirmDialog = ({
         {/* Header */}
         <div className="cd-header">
           <h3 id="cd-title" className="cd-title">{title}</h3>
-          <button className="cd-close" onClick={onCancel} aria-label="Close">
-            <FiX />
-          </button>
         </div>
 
         {/* Message */}

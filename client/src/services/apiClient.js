@@ -121,6 +121,7 @@ apiClient.interceptors.response.use(
                 // Only log out if the server explicitly rejected the refresh token (4xx error)
                 if (refreshStatus >= 400 && refreshStatus < 500) {
                     localStorage.removeItem("getway_token");
+                    localStorage.removeItem("getway_refresh_token_fallback");
                     localStorage.removeItem("getway_user");
 
                     toast.error(`Session Expired: ${backendMessage}`, {
@@ -138,6 +139,20 @@ apiClient.interceptors.response.use(
             } finally {
                 isRefreshing = false;
             }
+        }
+
+        // ── Handle Banned/Deactivated User ──
+        const backendMsg = error.response?.data?.message || '';
+        if (status === 403 && typeof backendMsg === 'string' && backendMsg.toLowerCase().includes('ban')) {
+            localStorage.removeItem("getway_token");
+            localStorage.removeItem("getway_refresh_token_fallback");
+            localStorage.removeItem("getway_user");
+            
+            if (window.location.pathname !== '/login') {
+                toast.error(backendMsg, { toastId: "account_deactivated" });
+                window.dispatchEvent(new CustomEvent("auth:logout"));
+            }
+            return Promise.reject(error);
         }
 
         // ── Global Error Toast ──

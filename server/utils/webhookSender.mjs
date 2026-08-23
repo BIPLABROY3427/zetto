@@ -43,7 +43,7 @@ export const dispatchWebhook = async (merchant, order, transactionStatus) => {
 
   const headers = {
     'Content-Type': 'application/json',
-    'User-Agent': 'QQPay-Webhook-Service/1.0',
+    'User-Agent': 'Getway-Webhook-Service/1.0',
     ...(signature && { 'x-webhook-signature': signature })
   };
 

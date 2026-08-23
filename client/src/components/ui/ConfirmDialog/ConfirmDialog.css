@@ -32,12 +32,37 @@
     0 8px 24px rgba(15, 23, 42, 0.1);
   width: 100%;
   max-width: 420px;
-  padding: 2rem;
+  padding: 2.5rem 2rem 2rem 2rem;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 1rem;
   animation: cdSlideIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.cd-close-abs {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.cd-close-abs:hover {
+  background: #f1f5f9;
+  color: #475569;
 }
 
 @keyframes cdSlideIn {
@@ -59,9 +84,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 2rem;
   flex-shrink: 0;
-  align-self: flex-start;
+  margin-bottom: 0.25rem;
 }
 
 .cd-icon-danger  { background: #fef2f2; color: #ef4444; }
@@ -72,56 +97,36 @@
 /* ── Header ── */
 .cd-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .cd-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #0f172a;
   line-height: 1.3;
-  flex: 1;
 }
 
-.cd-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #94a3b8;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
-  margin-top: -2px;
-}
 
-.cd-close:hover {
-  background: #f1f5f9;
-  color: #475569;
-}
 
 /* ── Message ── */
 .cd-message {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: #475569;
-  line-height: 1.65;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
 }
 
 /* ── Footer Buttons ── */
 .cd-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 0.625rem;
-  margin-top: 0.5rem;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .cd-btn {

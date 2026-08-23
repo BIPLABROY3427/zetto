@@ -177,6 +177,7 @@ Instead of redefining CSS for every page, you **MUST** use the global design sys
 
 ### 5. Transaction Gateway Integration (AeroPay)
 - Payin/Payout via AeroPay. Webhook validated via MD5 Signature.
+- **Auto-Sync:** Real-time Upstream AeroPay status checks for pending transactions. Updates local database & wallet automatically if merchant query API is called, or if manually synced by Admins on the `SystemTransactions` dashboard.
 
 ### 6. User (Merchant) Dashboard Actions
 - Manual Payin link creation + Manual Payout requests.
@@ -246,22 +247,15 @@ Instead of redefining CSS for every page, you **MUST** use the global design sys
 - Git initialized. Uploaded to `https://github.com/BIPLABROY3427/zetto`.
 - Root `.gitignore` excludes `.env`, `node_modules`, `dist`.
 
+### 15. Bugfixes & Core Improvements
+- **Role Permissions Issue:** Fixed an issue where the RBAC permissions map was being returned as an empty object by Express due to missing `flattenMaps: true` serialization in `roleController.mjs` and `authController.mjs`.
+- **Global Error Handling:** Implemented proper error interception (using `toast.error`) across auth pages (Login/Signup) preventing silent failures on backend HTTP 4xx responses.
+
 ---
 
 ## ⏳ Pending / Future Work
 
 > **UI/UX Redesign is 100% COMPLETE AND FROZEN. DO NOT MODIFY EXISTING UI.** All pages use the new `.pg-*` light theme. The following are functional/backend features still to be implemented:
-
-
-### 2. Webhook Retry Mechanism
-- **Plan:** BullMQ / Redis retry queue (3 retries, exponential backoff).
-
-### 3. Custom Checkout Page (Optional)
-- Public route: `https://zetto.in/checkout/:orderId` for VPA input UI.
-
-### 4. Analytics & Exporting
-- "Export to CSV" for Payin/Payout history tables.
-- Chart.js / Recharts for weekly/monthly volume graphs.
 
 ### 5. Merchant KYC & Verification
 - KYC upload in Basic Settings (Aadhar/PAN).

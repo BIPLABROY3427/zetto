@@ -3,14 +3,18 @@ import {
   FiArrowDownLeft,
   FiCheck,
   FiCopy,
+  FiDownload,
   FiLink,
   FiPlus,
   FiRefreshCw,
+  FiRotateCw,
   FiSearch,
   FiX
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import Pagination from '../../../../components/ui/Pagination/Pagination';
 import api from '../../../../services/apiClient';
+import { exportToCsv } from '../../../../utils/exportCsv';
 import './PayinOrder.css';
 
 const statusClass = (s) => {
@@ -24,6 +28,9 @@ const PayinOrder = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState(null);
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,19 +44,64 @@ const PayinOrder = () => {
     try {
       setLoading(true);
       const res = await api.get('/dashboard/transactions', {
-        params: { type: 'payment', search, status }
+        params: { type: 'payment', search, status, page, limit }
       });
       setData(res.data.data || []);
+      setPagination(res.data.pagination);
     } catch {
-      toast.error('Failed to fetch Payin Orders');
+      toast.error('Failed to fetch Payins');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTransactions(); }, [status]);
+  useEffect(() => { fetchTransactions(); }, [status, page, limit]);
 
-  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
+  const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchTransactions(); };
+
+  const handleExport = () => {
+    const exportData = data.map(tx => ({
+      'Order ID': tx.transactionId,
+      'Amount': tx.amount,
+      'Currency': 'INR',
+      'Status': tx.status,
+      'Webhook Status': tx.webhookStatus,
+      'Date': new Date(tx.createdAt).toLocaleString()
+    }));
+    exportToCsv(exportData, 'Payins_Export');
+  };
+
+  const handleSyncStatus = async (orderNo) => {
+    const toastId = toast.loading('Syncing with gateway...');
+    try {
+      const res = await api.get('/v1/gateway/payin/query', { params: { orderNo } });
+      toast.dismiss(toastId);
+      if (res.data.success) {
+        toast.success(`Status updated: ${res.data.status}`);
+        fetchTransactions();
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error(err.response?.data?.message || 'Failed to sync status');
+    }
+  };
+
+  const handleResendWebhook = async (id) => {
+    const toastId = toast.loading('Resending webhook...');
+    try {
+      const res = await api.post(`/dashboard/transactions/${id}/resend-webhook`);
+      toast.dismiss(toastId);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        fetchTransactions();
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error(err.response?.data?.message || 'Failed to resend webhook');
+    }
+  };
+
+
 
   const handleCreatePayment = async (e) => {
     e.preventDefault();
@@ -95,31 +147,22 @@ const PayinOrder = () => {
     <div className="pg-root">
       {/* Toolbar */}
       <div className="pg-toolbar">
-        <form className="pg-filters" onSubmit={handleSearch}>
-          <div className="po-search-wrap">
-            <FiSearch className="po-search-icon" />
-            <input
-              type="text"
-              className="pg-input po-search-input"
-              placeholder="Search order ID..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
+        <div className="pg-filters">
+          <select className="pg-select" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
           </select>
-          <button type="submit" className="pg-btn pg-btn-secondary">
-            <FiSearch /> Search
+          <form className="pg-search-form" onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
+            <input type="text" className="pg-input po-search-input" placeholder="Search order ID..." value={search} onChange={e => setSearch(e.target.value)} />
+            <button type="submit" className="pg-btn pg-btn-secondary"><FiSearch /></button>
+          </form>
+        </div>
+        <div className="pg-actions" style={{ display: 'flex', gap: '8px' }}>
+          <button className="pg-btn pg-btn-secondary" onClick={handleExport}>
+            <FiDownload /> Export
           </button>
-          <button type="button" className="pg-btn pg-btn-secondary" onClick={() => fetchTransactions()}>
-            <FiRefreshCw />
-          </button>
-        </form>
-        <div className="pg-actions">
           <button className="pg-btn pg-btn-primary" onClick={openModal}>
             <FiPlus /> Create Payment Link
           </button>
@@ -144,27 +187,77 @@ const PayinOrder = () => {
                 <tr>
                   <th>Order ID</th>
                   <th>Amount</th>
-                  <th>Currency</th>
+                  <th>Tax/Fee</th>
+                  <th>Payment Link</th>
                   <th>Status</th>
+                  <th>Webhook</th>
                   <th>Date & Time</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {data.length === 0 ? (
-                  <tr><td colSpan="5">
+                  <tr><td colSpan="8">
                     <div className="pg-empty"><p>No payin orders found</p></div>
                   </td></tr>
                 ) : data.map(tx => (
                   <tr key={tx._id}>
-                    <td className="po-order-id">{tx.transactionId}</td>
+                    <td className="po-order-id">
+                      <div>{tx.transactionId}</div>
+                      {tx.gatewayOrderId && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '2px', fontFamily: 'monospace' }}>
+                          UTR: {tx.gatewayOrderId}
+                        </div>
+                      )}
+                    </td>
                     <td className="po-amount">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
-                    <td><span className="pg-badge pg-badge-inr">INR</span></td>
+                    <td className="po-amount" style={{ color: '#ef4444' }}>₹{Number(tx.commissionAmount || 0).toLocaleString('en-IN')}</td>
+                    <td className="po-payment-link">
+                      {tx.paymentUrl ? (
+                        <a href={tx.paymentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.85rem' }}>
+                          <FiLink style={{ marginRight: '4px' }} />
+                          View Link
+                        </a>
+                      ) : '-'}
+                    </td>
                     <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td>
+                      <span className={statusClass(tx.webhookStatus || 'pending')}>
+                        {tx.webhookStatus || 'pending'}
+                      </span>
+                    </td>
                     <td className="po-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {tx.status === 'pending' && (
+                        <button
+                          className="pg-btn pg-btn-secondary pg-btn-sm"
+                          onClick={() => handleSyncStatus(tx.transactionId)}
+                          title="Sync with Upstream"
+                        >
+                          <FiRefreshCw />
+                        </button>
+                      )}
+                      {(tx.status === 'completed' || tx.status === 'failed') && (
+                        <button
+                          className="pg-btn pg-btn-secondary pg-btn-sm"
+                          onClick={() => handleResendWebhook(tx._id)}
+                          title="Resend Webhook"
+                        >
+                          <FiRotateCw />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+          {pagination && (
+            <Pagination
+              pagination={pagination}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+            />
           )}
         </div>
       </div>

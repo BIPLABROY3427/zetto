@@ -3,11 +3,12 @@ import axios from 'axios';
 import crypto from 'crypto';
 import IORedis from 'ioredis';
 import Transaction from '../models/Transaction.mjs';
-import Merchant from '../models/Merchant.mjs';
+import User from '../models/User.mjs';
 import 'dotenv/config';
 
 // BullMQ requires IORedis connection
 const connection = new IORedis(process.env.REDIS_URL, {
+    password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
 });
 
@@ -17,21 +18,22 @@ const worker = new Worker('webhook-queue', async (job) => {
     const { transactionId, merchantId, payload, attempt } = job.data;
     
     // Fetch merchant details to get callback URL and secret
-    const merchant = await Merchant.findById(merchantId);
+    const merchant = await User.findById(merchantId);
     if (!merchant || !merchant.callbackUrl) {
         throw new Error('Merchant or callback URL not found');
     }
 
-    // Create a signature using the merchant's webhook secret
-    const signature = crypto.createHmac('sha256', merchant.webhookSecret || 'default_secret')
-        .update(JSON.stringify(payload))
-        .digest('hex');
+    // SIMPLIFIED INTEGRATION: Inject the secret directly into the payload
+    // instead of using HMAC signature, making it easier for freshers.
+    const finalPayload = {
+        ...payload,
+        secret: merchant.webhookSecret || 'default_secret'
+    };
 
     try {
-        const response = await axios.post(merchant.callbackUrl, payload, {
+        const response = await axios.post(merchant.callbackUrl, finalPayload, {
             headers: {
-                'Content-Type': 'application/json',
-                'X-Signature': signature
+                'Content-Type': 'application/json'
             },
             timeout: 5000 // 5 seconds timeout
         });

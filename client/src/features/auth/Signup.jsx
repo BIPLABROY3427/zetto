@@ -21,17 +21,15 @@ const Signup = () => {
       toast.warning('Please fill all fields');
       return;
     }
-    if (formData.password.length < 6) {
-      toast.warning('Password must be at least 6 characters');
-      return;
-    }
     try {
       setLoading(true);
-      await apiClient.post('/auth/signup', formData);
+      await apiClient.post('/auth/register', formData);
       toast.success('OTP sent to your email!');
-      navigate('/verify-otp', { state: { email: formData.email } });
+      navigate('/auth-otp', { state: { email: formData.email } });
     } catch (err) {
       console.error('Signup error', err);
+      const msg = err.response?.data?.message || 'Signup failed. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

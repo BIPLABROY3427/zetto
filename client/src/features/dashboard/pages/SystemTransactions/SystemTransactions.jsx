@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../../../services/apiClient';
+import { useEffect, useState } from 'react';
+import { FiDatabase, FiEye, FiRefreshCw, FiRotateCw, FiSearch, FiX } from 'react-icons/fi';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { FiSearch, FiRefreshCw, FiEye, FiRotateCw, FiX, FiDatabase } from 'react-icons/fi';
+import Pagination from '../../../../components/ui/Pagination/Pagination';
+import api from '../../../../services/apiClient';
 import './SystemTransactions.css';
 
 const statusClass = (s) => {
@@ -13,33 +14,57 @@ const statusClass = (s) => {
 
 const SystemTransactions = ({ initialType = 'all' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const merchantId = queryParams.get('merchantId');
+
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [type, setType] = useState(initialType);
   const [selectedTx, setSelectedTx] = useState(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState(null);
 
   useEffect(() => { setType(initialType); }, [initialType]);
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/dashboard/admin/transactions', { params: { type, search, status } });
+      const params = { type, search, status, page, limit };
+      if (merchantId) params.merchantId = merchantId;
+      const res = await api.get('/dashboard/admin/transactions', { params });
+
       setData(res.data.data || []);
+      setPagination(res.data.pagination);
     } catch { toast.error('Failed to fetch transactions'); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTransactions(); }, [status, type]);
+  useEffect(() => { fetchTransactions(); }, [status, type, page, limit]);
 
-  const handleSearch = (e) => { e.preventDefault(); fetchTransactions(); };
+  const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchTransactions(); };
 
   const handleResendWebhook = async (id) => {
     try {
       const res = await api.post(`/dashboard/transactions/${id}/resend-webhook`, {}, { hideErrorToast: true });
       if (res.data.success) { toast.success(`Webhook resent!`); fetchTransactions(); }
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to resend webhook'); }
+  };
+
+  const handleSyncTransaction = async (id) => {
+    try {
+      toast.info('Syncing status with AeroPay...');
+      const res = await api.post(`/dashboard/admin/transactions/${id}/sync`);
+      if (res.data.success) {
+        toast.success(res.data.message || 'Transaction synced');
+        fetchTransactions();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to sync transaction');
+    }
   };
 
   return (
@@ -49,7 +74,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
           <div className="st-search-wrap">
             <FiSearch className="st-search-icon" />
             <input type="text" className="pg-input st-search-input"
-              placeholder="Search order ID..." value={search}
+              placeholder="Search Order ID, Name, Business..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
           <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
@@ -74,7 +99,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
             <span className="pg-card-title-icon"><FiDatabase /></span>
             System Transactions
           </h4>
-          <span className="tk-count">{data.length} records</span>
+          <span className="tk-count">{pagination?.totalRecords || data.length} records</span>
         </div>
         <div className="pg-table-wrap">
           {loading ? (
@@ -87,6 +112,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
                   <th>Type</th>
                   <th>Order ID</th>
                   <th>Amount</th>
+                  <th>Tax/Fee</th>
                   <th>Details</th>
                   <th>Status</th>
                   <th>Webhook</th>
@@ -106,18 +132,26 @@ const SystemTransactions = ({ initialType = 'all' }) => {
                       </div>
                     </td>
                     <td>
-                      <span className={`pg-badge ${tx.type === 'payment' ? 'pg-badge-blue' : 'pg-badge-amber'}`}>
-                        {tx.type === 'payment' ? 'PayIn' : 'PayOut'}
+                      <span className={`pg-badge ${tx.type === 'payment' ? 'pg-badge-blue' : tx.type === 'withdrawal' ? 'pg-badge-amber' : tx.type === 'freeze' ? 'pg-badge-red' : 'pg-badge-green'}`}>
+                        {tx.type === 'payment' ? 'PayIn' : tx.type === 'withdrawal' ? 'PayOut' : tx.type === 'freeze' ? 'Freeze' : tx.type === 'unfreeze' ? 'Unfreeze' : tx.type}
                       </span>
                     </td>
-                    <td className="st-order-id">{tx.transactionId}</td>
+                    <td className="st-order-id">
+                      <div>{tx.transactionId}</div>
+                      {tx.gatewayOrderId && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '2px', fontFamily: 'monospace' }}>
+                          UTR: {tx.gatewayOrderId}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ fontWeight: 700 }}>₹{Number(tx.amount).toLocaleString('en-IN')}</td>
+                    <td style={{ color: '#ef4444' }}>₹{Number(tx.commissionAmount || 0).toLocaleString('en-IN')}</td>
                     <td className="st-details">
                       {tx.type === 'payment' ? (
                         tx.paymentUrl ? <a href={tx.paymentUrl} target="_blank" rel="noreferrer" className="st-link">Link ↗</a> : '-'
                       ) : (
                         tx.customerDetails?.accountNumber
-                          ? <span>{tx.customerDetails.accountNumber} / {tx.customerDetails.ifscCode}</span>
+                          ? <span>{tx.customerDetails.accountName ? `${tx.customerDetails.accountName} - ` : ''}{tx.customerDetails.accountNumber} / {tx.customerDetails.ifscCode}</span>
                           : '-'
                       )}
                     </td>
@@ -126,7 +160,10 @@ const SystemTransactions = ({ initialType = 'all' }) => {
                     <td className="st-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td>
                       <div className="st-actions">
-                        <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => setSelectedTx(tx)}><FiEye /></button>
+                        {tx.status === 'pending' && (
+                          <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => handleSyncTransaction(tx._id)} title="Sync Status"><FiRefreshCw /></button>
+                        )}
+                        <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => setSelectedTx(tx)} title="View Details"><FiEye /></button>
                         <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => handleResendWebhook(tx._id)} title="Resend Webhook"><FiRotateCw /></button>
                       </div>
                     </td>
@@ -135,6 +172,11 @@ const SystemTransactions = ({ initialType = 'all' }) => {
               </tbody>
             </table>
           )}
+          <Pagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+          />
         </div>
       </div>
 

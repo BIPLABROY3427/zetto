@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { FiBriefcase, FiCheck, FiCopy, FiEye, FiEyeOff, FiGlobe, FiKey, FiLock, FiMail, FiPhone, FiRefreshCw, FiSave, FiShield, FiUser } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import { useAuth } from '../../../../context/AuthContext';
 import api from '../../../../services/apiClient';
-import { toast } from 'react-toastify';
-import { FiUser, FiMail, FiPhone, FiGlobe, FiBriefcase, FiLock, FiEye, FiEyeOff, FiSave, FiShield, FiKey, FiCopy, FiRefreshCw } from 'react-icons/fi';
 import './AccountSettings.css';
 
 const AccountSettings = () => {
   const { user, login } = useAuth();
+
+  useEffect(() => {
+    // Fetch latest profile on load to ensure KYC status is up to date
+    api.get('/users/me').then(({ data }) => {
+      if (data?.user) {
+        const userData = { ...data.user, permissions: data.user.customRole ? data.user.customRole.permissions : null };
+        login(userData, localStorage.getItem('getway_token'), localStorage.getItem('getway_refresh_token_fallback'));
+      }
+    }).catch(err => console.error('Failed to fetch latest profile:', err));
+  }, []);
 
   const [profile, setProfile] = useState({
     name: user?.name || '',
@@ -22,6 +32,10 @@ const AccountSettings = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPwd, setSavingPwd] = useState(false);
 
+  const [kycDocType, setKycDocType] = useState('Aadhar');
+  const [kycFile, setKycFile] = useState(null);
+  const [uploadingKyc, setUploadingKyc] = useState(false);
+
   const initials = (user?.name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const roleColor = { superadmin: '#dc2626', admin: '#2563eb', user: '#16a34a' }[user?.role] || '#2563eb';
 
@@ -29,9 +43,12 @@ const AccountSettings = () => {
     e.preventDefault();
     try {
       setSavingProfile(true);
-      const { data } = await api.put('/auth/profile', profile);
+      const { data } = await api.put('/users/profile', profile);
       toast.success('Profile updated!');
-      if (data.user) login(data.user, localStorage.getItem('token'), localStorage.getItem('refreshToken'));
+      if (data.user) {
+        const userData = { ...data.user, permissions: data.user.customRole ? data.user.customRole.permissions : null };
+        login(userData, localStorage.getItem('getway_token'), localStorage.getItem('getway_refresh_token_fallback'));
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile');
     } finally { setSavingProfile(false); }
@@ -43,12 +60,37 @@ const AccountSettings = () => {
     if (pwd.newPwd.length < 6) { toast.error('Password must be at least 6 characters'); return; }
     try {
       setSavingPwd(true);
-      await api.put('/auth/change-password', { currentPassword: pwd.current, newPassword: pwd.newPwd });
+      const currentRefreshToken = localStorage.getItem('getway_refresh_token_fallback');
+      await api.put('/auth/change-password', { 
+        currentPassword: pwd.current, 
+        newPassword: pwd.newPwd,
+        currentRefreshToken 
+      });
       toast.success('Password changed successfully!');
       setPwd({ current: '', newPwd: '', confirm: '' });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to change password');
     } finally { setSavingPwd(false); }
+  };
+
+  const handleKycUpload = async (e) => {
+    e.preventDefault();
+    if (!kycFile) return toast.error('Please select a document file');
+    const formData = new FormData();
+    formData.append('docType', kycDocType);
+    formData.append('document', kycFile);
+    try {
+      setUploadingKyc(true);
+      const { data } = await api.post('/users/kyc/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(data.message);
+      login({ ...user, kycStatus: data.kycStatus, kycDocuments: data.kycDocuments }, localStorage.getItem('getway_token'), localStorage.getItem('getway_refresh_token_fallback'));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload KYC');
+    } finally {
+      setUploadingKyc(false);
+    }
   };
 
   return (
@@ -190,6 +232,58 @@ const AccountSettings = () => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      {/* KYC Verification */}
+      <div className="pg-card">
+        <div className="pg-card-header">
+          <h4 className="pg-card-title">
+            <span className="pg-card-title-icon"><FiShield /></span>
+            KYC Verification
+          </h4>
+          <span className={`pg-status ${user?.kycStatus === 'approved' ? 'pg-status-completed' : user?.kycStatus === 'rejected' ? 'pg-status-failed' : 'pg-status-pending'}`}>
+            {user?.kycStatus === 'approved' ? 'Verified' : user?.kycStatus === 'submitted' ? 'Under Review' : user?.kycStatus === 'rejected' ? 'Rejected' : 'Pending'}
+          </span>
+        </div>
+        <div className="pg-card-body">
+          {user?.kycStatus === 'approved' ? (
+            <div className="pg-empty" style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+              <FiCheck size={24} style={{ marginBottom: 10 }} />
+              <p>Your KYC has been successfully verified.</p>
+            </div>
+          ) : user?.kycStatus === 'submitted' ? (
+            <div className="pg-empty" style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>
+              <FiRefreshCw size={24} style={{ marginBottom: 10 }} className="as-spin" />
+              <p>Your documents are currently under review by our team.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleKycUpload} className="pg-form">
+              {user?.kycStatus === 'rejected' && (
+                <div className="as-error-msg" style={{ marginBottom: '1rem', padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px' }}>
+                  <strong>Rejection Reason:</strong> {user.kycRejectionReason || 'Documents were invalid or unclear. Please re-upload.'}
+                </div>
+              )}
+              <div className="pg-form-row">
+                <label className="pg-label">Document Type</label>
+                <select className="pg-field" value={kycDocType} onChange={e => setKycDocType(e.target.value)}>
+                  <option value="Aadhar">Aadhar Card</option>
+                  <option value="PAN">PAN Card</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="pg-form-row">
+                <label className="pg-label">Upload Document</label>
+                <input type="file" className="pg-field" accept="image/*,.pdf" onChange={e => setKycFile(e.target.files[0])} />
+                <span className="pg-help-text">Max size: 5MB. Formats: JPG, PNG, PDF.</span>
+              </div>
+              <div style={{ marginTop: '1rem' }}>
+                <button type="submit" className="pg-btn pg-btn-primary" disabled={uploadingKyc || !kycFile}>
+                  {uploadingKyc ? <><FiRefreshCw className="as-spin" /> Uploading...</> : 'Submit for Verification'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

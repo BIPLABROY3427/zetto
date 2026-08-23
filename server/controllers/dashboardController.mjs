@@ -1,5 +1,6 @@
-import User from '../models/User.mjs';
 import Transaction from '../models/Transaction.mjs';
+import User from '../models/User.mjs';
+import { queryUpstreamPayIn, queryUpstreamPayOut } from '../services/aeropayService.mjs';
 import { sendWebhookToMerchant } from './gatewayController.mjs';
 
 /**
@@ -10,7 +11,7 @@ import { sendWebhookToMerchant } from './gatewayController.mjs';
 export const getDashboardStats = async (req, res) => {
   try {
     const merchantId = req.user._id;
-    
+
     // We already have wallet metrics logically mapped on the user
     // (In a real system, these would be carefully transactionally maintained during payments/withdrawals)
     const merchant = await User.findById(merchantId);
@@ -60,14 +61,24 @@ export const getDashboardStats = async (req, res) => {
 
     let inSuccAmount = 0, inAmount = 0;
     let outSuccAmount = 0, outAmount = 0;
+    let inCount = 0, inSuccCount = 0;
+    let outCount = 0, outSuccCount = 0;
 
     todaysTransactions.forEach(tx => {
       if (tx.type === 'payment') {
         inAmount += tx.amount;
-        if (tx.status === 'completed') inSuccAmount += tx.amount;
+        inCount += 1;
+        if (tx.status === 'completed') {
+          inSuccAmount += tx.amount;
+          inSuccCount += 1;
+        }
       } else if (tx.type === 'withdrawal') {
         outAmount += tx.amount;
-        if (tx.status === 'completed') outSuccAmount += tx.amount;
+        outCount += 1;
+        if (tx.status === 'completed') {
+          outSuccAmount += tx.amount;
+          outSuccCount += 1;
+        }
       }
     });
 
@@ -82,17 +93,21 @@ export const getDashboardStats = async (req, res) => {
         todayStats: {
           inSuccAmount,
           inAmount,
-          inSuccRate: inAmount > 0 ? (inSuccAmount / inAmount) * 100 : 0,
+          inSuccRate: inCount > 0 ? (inSuccCount / inCount) * 100 : 0,
           outSuccAmount,
           outAmount,
-          outSuccRate: outAmount > 0 ? (outSuccAmount / outAmount) * 100 : 0,
+          outSuccRate: outCount > 0 ? (outSuccCount / outCount) * 100 : 0,
         }
       },
       settings: {
+        commission: merchant.commission || {
+          payin: { percent: 5, flat: 0 },
+          payout: { percent: 2, flat: 0 }
+        },
         commissionRate: merchant.commissionRate || 0.05,
         callbackUrl: merchant.callbackUrl || '',
         webhookSecret: merchant.webhookSecret || '',
-        activeApiKey: merchant.apiKeys?.find(k => k.isActive)?.key || null
+        activeApiKey: merchant.apiKey || null
       },
       chartData
     });
@@ -211,8 +226,8 @@ export const resendWebhook = async (req, res) => {
 
     await sendWebhookToMerchant(merchant, transaction);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: `Webhook queued for delivery. Status: ${transaction.webhookStatus}`,
       webhookStatus: transaction.webhookStatus,
       webhookResponse: transaction.webhookResponse
@@ -246,6 +261,7 @@ export const getAllSystemTransactions = async (req, res) => {
     // Exact Match Filters
     if (status !== 'all') query.status = status;
     if (type !== 'all') query.type = type;
+    if (req.query.merchantId) query.merchantId = req.query.merchantId;
 
     // Date Range Filter
     if (startDate || endDate) {
@@ -254,12 +270,22 @@ export const getAllSystemTransactions = async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
 
-    // Search by transactionId or gatewayOrderId
+    // Search by transactionId, gatewayOrderId, accountNumber, or User details
     if (search) {
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { businessName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id');
+      const userIds = users.map(u => u._id);
+
       query.$or = [
         { transactionId: { $regex: search, $options: 'i' } },
         { gatewayOrderId: { $regex: search, $options: 'i' } },
-        { 'customerDetails.accountNumber': { $regex: search, $options: 'i' } }
+        { 'customerDetails.accountNumber': { $regex: search, $options: 'i' } },
+        { merchantId: { $in: userIds } }
       ];
     }
 
@@ -298,7 +324,7 @@ export const getAllSystemTransactions = async (req, res) => {
 export const getAdminAnalytics = async (req, res) => {
   try {
     const { days = 7, startDate, endDate } = req.query; // 7 or 30
-    
+
     let topMerchantsMatchQuery = { status: 'completed' };
     let lifetimeMatchQuery = {}; // We want lifetime data for allMerchantsStats, but if the user wants filtered date, we can apply it. Let's see.
 
@@ -320,16 +346,16 @@ export const getAdminAnalytics = async (req, res) => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(0, 0, 0, 0);
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       topMerchantsMatchQuery.createdAt = { $gte: yesterday, $lt: today };
       lifetimeMatchQuery.createdAt = { $gte: yesterday, $lt: today };
     } else if (days !== 'lifetime') {
       const dateLimit = new Date();
       dateLimit.setDate(dateLimit.getDate() - parseInt(days));
-      dateLimit.setHours(0,0,0,0);
+      dateLimit.setHours(0, 0, 0, 0);
       topMerchantsMatchQuery.createdAt = { $gte: dateLimit };
       lifetimeMatchQuery.createdAt = { $gte: dateLimit };
     }
@@ -372,23 +398,62 @@ export const getAdminAnalytics = async (req, res) => {
     // 2. All Merchants Performance List (Lifetime or based on filter?)
     // User requested: "user ne ketna ajtak payment link ceate keya number of transaction total ketna amount payin keya and petna payout yea sab"
     // "ajtak" means lifetime (Overall), so we completely ignore the date filter for this table!
-    
+
     const allMerchantsStats = await Transaction.aggregate([
+      {
+        // Apply the same date filter as topMerchants, but without filtering by status=completed
+        $match: lifetimeMatchQuery
+      },
       {
         $group: {
           _id: "$merchantId",
-          totalLinksCreated: { 
-            $sum: { $cond: [{ $eq: ["$type", "payment"] }, 1, 0] } 
+          totalLinksCreated: {
+            $sum: { $cond: [{ $eq: ["$type", "payment"] }, 1, 0] }
           },
-          totalPayinAmount: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "completed"] }] }, "$amount", 0]
-            }
+          totalCreatedAmount: {
+            $sum: { $cond: [{ $eq: ["$type", "payment"] }, "$amount", 0] }
           },
-          totalPayoutAmount: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "completed"] }] }, "$amount", 0]
-            }
+          successCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "completed"] }] }, 1, 0] }
+          },
+          successAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "completed"] }] }, "$amount", 0] }
+          },
+          pendingCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "pending"] }] }, 1, 0] }
+          },
+          pendingAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "pending"] }] }, "$amount", 0] }
+          },
+          failedCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "failed"] }] }, 1, 0] }
+          },
+          failedAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "payment"] }, { $eq: ["$status", "failed"] }] }, "$amount", 0] }
+          },
+          payoutCreatedCount: {
+            $sum: { $cond: [{ $eq: ["$type", "withdrawal"] }, 1, 0] }
+          },
+          payoutCreatedAmount: {
+            $sum: { $cond: [{ $eq: ["$type", "withdrawal"] }, "$amount", 0] }
+          },
+          payoutSuccessCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "completed"] }] }, 1, 0] }
+          },
+          payoutSuccessAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "completed"] }] }, "$amount", 0] }
+          },
+          payoutPendingCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "pending"] }] }, 1, 0] }
+          },
+          payoutPendingAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "pending"] }] }, "$amount", 0] }
+          },
+          payoutFailedCount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "failed"] }] }, 1, 0] }
+          },
+          payoutFailedAmount: {
+            $sum: { $cond: [{ $and: [{ $eq: ["$type", "withdrawal"] }, { $eq: ["$status", "failed"] }] }, "$amount", 0] }
           }
         }
       },
@@ -405,14 +470,27 @@ export const getAdminAnalytics = async (req, res) => {
         $project: {
           _id: 1,
           totalLinksCreated: 1,
-          totalPayinAmount: 1,
-          totalPayoutAmount: 1,
+          totalCreatedAmount: 1,
+          successCount: 1,
+          successAmount: 1,
+          pendingCount: 1,
+          pendingAmount: 1,
+          failedCount: 1,
+          failedAmount: 1,
+          payoutCreatedCount: 1,
+          payoutCreatedAmount: 1,
+          payoutSuccessCount: 1,
+          payoutSuccessAmount: 1,
+          payoutPendingCount: 1,
+          payoutPendingAmount: 1,
+          payoutFailedCount: 1,
+          payoutFailedAmount: 1,
           "merchant.name": 1,
           "merchant.email": 1,
           "merchant.businessName": 1
         }
       },
-      { $sort: { totalPayinAmount: -1 } }
+      { $sort: { successAmount: -1 } }
     ]);
 
     res.status(200).json({
@@ -424,5 +502,159 @@ export const getAdminAnalytics = async (req, res) => {
   } catch (error) {
     console.error('getAdminAnalytics Error:', error);
     res.status(500).json({ success: false, message: 'Server Error processing analytics' });
+  }
+};
+
+/**
+ * @desc    Sync a pending transaction status with AeroPay
+ * @route   POST /api/dashboard/admin/transactions/:id/sync
+ */
+export const syncTransactionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const transaction = await Transaction.findById(id);
+
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Only pending transactions can be synced' });
+    }
+
+    let upstreamStatus;
+    let newOrderState;
+    let actualAmount;
+
+    if (transaction.type === 'payment') {
+      upstreamStatus = await queryUpstreamPayIn(transaction.transactionId);
+      newOrderState = String(upstreamStatus.data?.orderState);
+      actualAmount = upstreamStatus.data?.amount;
+    } else if (transaction.type === 'withdrawal') {
+      upstreamStatus = await queryUpstreamPayOut(transaction.transactionId);
+      newOrderState = String(upstreamStatus.data?.orderState);
+      actualAmount = upstreamStatus.data?.amount;
+    }
+
+    if (!upstreamStatus || !upstreamStatus.data) {
+      return res.status(400).json({ success: false, message: 'Failed to fetch status from upstream' });
+    }
+
+    // Process based on new order state (1: Success, 2/4: Failed)
+    if (newOrderState === '1') {
+      transaction.status = 'completed';
+
+      if (transaction.type === 'payment') {
+        await User.findOneAndUpdate(
+          { _id: transaction.merchantId },
+          { $inc: { walletBalance: transaction.amount - (transaction.commissionAmount || 0), totalReceived: Number(actualAmount || transaction.amount) } }
+        );
+      }
+      // For payout success, wallet is already deducted, no balance change needed
+
+      await transaction.save();
+      const merchant = await User.findById(transaction.merchantId);
+      if (merchant) sendWebhookToMerchant(merchant, transaction);
+
+      return res.status(200).json({ success: true, message: 'Transaction marked as completed and wallet updated.' });
+    } else if (newOrderState === '2' || newOrderState === '4') {
+      transaction.status = 'failed';
+
+      if (transaction.type === 'withdrawal') {
+        const refundAmount = transaction.amount + (transaction.commissionAmount || 0);
+        await User.findOneAndUpdate(
+          { _id: transaction.merchantId },
+          { $inc: { walletBalance: refundAmount, totalWithdrawals: -transaction.amount } }
+        );
+      }
+
+      await transaction.save();
+      const merchant = await User.findById(transaction.merchantId);
+      if (merchant) sendWebhookToMerchant(merchant, transaction);
+
+      return res.status(200).json({ success: true, message: 'Transaction marked as failed.' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Transaction is still pending on upstream.' });
+  } catch (error) {
+    console.error('Error syncing transaction:', error);
+    res.status(500).json({ success: false, message: 'Server Error during sync', error: error.message });
+  }
+};
+
+/**
+ * @desc    Get K-Line chart data (hourly grouped by amount buckets)
+ * @route   GET /api/merchant/dashboard/kline
+ * @access  Private (Requires Token)
+ */
+export const getKLineData = async (req, res) => {
+  try {
+    const merchantId = req.user._id;
+    const { date, type = 'payment', status = 'all' } = req.query;
+
+    // Determine the date range (full day)
+    let startOfDay, endOfDay;
+    if (date) {
+      startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+    } else {
+      startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+    }
+
+    // Build the query
+    const query = {
+      merchantId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay },
+      type
+    };
+
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    const transactions = await Transaction.find(query).sort({ createdAt: 1 });
+
+    // Initialize the hourly data structure (24 hours)
+    const hourlyData = Array.from({ length: 24 }, (_, i) => {
+      return {
+        time: `${i.toString().padStart(2, '0')}:00`,
+        '0-200': 0,
+        '200-500': 0,
+        '500-1000': 0,
+        '1000-3000': 0,
+        '3000+': 0,
+        'Summary': 0
+      };
+    });
+
+    // Populate data
+    transactions.forEach(tx => {
+      const hour = new Date(tx.createdAt).getHours();
+      const amt = tx.amount;
+      
+      hourlyData[hour]['Summary'] += amt;
+
+      if (amt <= 200) {
+        hourlyData[hour]['0-200'] += amt;
+      } else if (amt <= 500) {
+        hourlyData[hour]['200-500'] += amt;
+      } else if (amt <= 1000) {
+        hourlyData[hour]['500-1000'] += amt;
+      } else if (amt <= 3000) {
+        hourlyData[hour]['1000-3000'] += amt;
+      } else {
+        hourlyData[hour]['3000+'] += amt;
+      }
+    });
+
+    res.status(200).json({ success: true, data: hourlyData });
+  } catch (error) {
+    console.error('getKLineData Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error retrieving K-Line stats' });
   }
 };

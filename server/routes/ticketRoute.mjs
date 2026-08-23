@@ -1,13 +1,13 @@
 import express from 'express';
-import { 
-  createTicket, 
-  getTickets, 
-  getTicket, 
-  addMessage, 
-  markAsRead, 
-  updateStatus 
+import {
+  addMessage,
+  createTicket,
+  getTicket,
+  getTickets,
+  markAsRead,
+  updateStatus
 } from '../controllers/ticketController.mjs';
-import { verifyAuth, requireRole } from '../middlewares/roleAuth.mjs';
+import { requireRole, verifyAuth } from '../middlewares/roleAuth.mjs';
 
 const router = express.Router();
 

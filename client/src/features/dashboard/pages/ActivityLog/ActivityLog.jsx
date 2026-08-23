@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { FiActivity, FiClock, FiDollarSign, FiFilter, FiLogIn, FiLogOut, FiRefreshCw, FiSettings, FiShield, FiUser } from 'react-icons/fi';
 import api from '../../../../services/apiClient';
-import { toast } from 'react-toastify';
-import { FiActivity, FiRefreshCw, FiLogIn, FiLogOut, FiSettings, FiShield, FiUser, FiDollarSign, FiClock, FiFilter } from 'react-icons/fi';
 import './ActivityLog.css';
 
 // Map action types to icons + colors
 const ACTION_META = {
-  login:           { icon: <FiLogIn />,      color: '#16a34a', bg: '#f0fdf4', border: '#86efac', label: 'Login' },
-  logout:          { icon: <FiLogOut />,     color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', label: 'Logout' },
-  profile_update:  { icon: <FiUser />,       color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', label: 'Profile Updated' },
-  password_change: { icon: <FiShield />,     color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe', label: 'Password Changed' },
-  settings_update: { icon: <FiSettings />,   color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', label: 'Settings Updated' },
-  transaction:     { icon: <FiDollarSign />, color: '#b45309', bg: '#fffbeb', border: '#fde68a', label: 'Transaction' },
+  login: { icon: <FiLogIn />, color: '#16a34a', bg: '#f0fdf4', border: '#86efac', label: 'Login' },
+  logout: { icon: <FiLogOut />, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', label: 'Logout' },
+  profile_update: { icon: <FiUser />, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', label: 'Profile Updated' },
+  password_change: { icon: <FiShield />, color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe', label: 'Password Changed' },
+  settings_update: { icon: <FiSettings />, color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', label: 'Settings Updated' },
+  transaction: { icon: <FiDollarSign />, color: '#b45309', bg: '#fffbeb', border: '#fde68a', label: 'Transaction' },
 };
 
 const getActionMeta = (action = '') => {
@@ -22,11 +21,11 @@ const getActionMeta = (action = '') => {
 const timeAgo = (dateStr) => {
   const diff = Date.now() - new Date(dateStr).getTime();
   const min = Math.floor(diff / 60000);
-  const hr  = Math.floor(diff / 3600000);
+  const hr = Math.floor(diff / 3600000);
   const day = Math.floor(diff / 86400000);
-  if (min < 1)  return 'Just now';
+  if (min < 1) return 'Just now';
   if (min < 60) return `${min}m ago`;
-  if (hr  < 24) return `${hr}h ago`;
+  if (hr < 24) return `${hr}h ago`;
   return `${day}d ago`;
 };
 
@@ -37,13 +36,13 @@ const ActivityLog = () => {
 
   // Dummy logs fallback (in case no real API)
   const DUMMY_LOGS = [
-    { _id: '1', action: 'login',           description: 'Logged in from Chrome on Windows',   ip: '192.168.1.1',  createdAt: new Date(Date.now() - 5*60000).toISOString() },
-    { _id: '2', action: 'profile_update',  description: 'Updated business name and phone',     ip: '192.168.1.1',  createdAt: new Date(Date.now() - 2*3600000).toISOString() },
-    { _id: '3', action: 'password_change', description: 'Password changed successfully',       ip: '192.168.1.1',  createdAt: new Date(Date.now() - 1*86400000).toISOString() },
-    { _id: '4', action: 'login',           description: 'Logged in from Safari on macOS',      ip: '10.0.0.5',     createdAt: new Date(Date.now() - 2*86400000).toISOString() },
-    { _id: '5', action: 'settings_update', description: 'Webhook URL updated',                 ip: '192.168.1.1',  createdAt: new Date(Date.now() - 3*86400000).toISOString() },
-    { _id: '6', action: 'transaction',     description: 'Payin order created: ₹5,000',         ip: '192.168.1.1',  createdAt: new Date(Date.now() - 4*86400000).toISOString() },
-    { _id: '7', action: 'logout',          description: 'Session ended',                       ip: '192.168.1.1',  createdAt: new Date(Date.now() - 5*86400000).toISOString() },
+    { _id: '1', action: 'login', description: 'Logged in from Chrome on Windows', ip: '192.168.1.1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
+    { _id: '2', action: 'profile_update', description: 'Updated business name and phone', ip: '192.168.1.1', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
+    { _id: '3', action: 'password_change', description: 'Password changed successfully', ip: '192.168.1.1', createdAt: new Date(Date.now() - 1 * 86400000).toISOString() },
+    { _id: '4', action: 'login', description: 'Logged in from Safari on macOS', ip: '10.0.0.5', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+    { _id: '5', action: 'settings_update', description: 'Webhook URL updated', ip: '192.168.1.1', createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+    { _id: '6', action: 'transaction', description: 'Payin order created: ₹5,000', ip: '192.168.1.1', createdAt: new Date(Date.now() - 4 * 86400000).toISOString() },
+    { _id: '7', action: 'logout', description: 'Session ended', ip: '192.168.1.1', createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
   ];
 
   const fetchLogs = async () => {
@@ -66,16 +65,16 @@ const ActivityLog = () => {
     : logs.filter(l => l.action?.toLowerCase().includes(filter));
 
   const filterOptions = [
-    { value: 'all',      label: 'All Activity' },
-    { value: 'login',    label: 'Logins' },
-    { value: 'profile',  label: 'Profile' },
+    { value: 'all', label: 'All Activity' },
+    { value: 'login', label: 'Logins' },
+    { value: 'profile', label: 'Profile' },
     { value: 'password', label: 'Password' },
     { value: 'transaction', label: 'Transactions' },
   ];
 
   // Stats
   const totalLogins = logs.filter(l => l.action?.includes('login')).length;
-  const lastLogin   = logs.find(l => l.action?.includes('login'));
+  const lastLogin = logs.find(l => l.action?.includes('login'));
 
   return (
     <div className="pg-root">

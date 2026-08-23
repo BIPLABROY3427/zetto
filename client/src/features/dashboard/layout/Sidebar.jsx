@@ -35,10 +35,8 @@ const Sidebar = ({ isSidebarOpen, isSidebarCollapsed, setIsSidebarOpen }) => {
     {
       id: 'recharge_management', label: 'Payment', icon: FiCreditCard, color: 'icon-emerald',
       subItems: [
-        { id: '/dashboard/payin', label: 'Payin Order' },
-        { id: '/dashboard/payin-history', label: 'Payin History' },
-        { id: '/dashboard/payout', label: 'Payout Order' },
-        { id: '/dashboard/payout-history', label: 'Payout History' },
+        { id: '/dashboard/payin', label: 'Payins' },
+        { id: '/dashboard/payout', label: 'Payouts' },
         { id: '/dashboard/daily-summary', label: 'Daily Summary' },
         { id: '/dashboard/bal-day-sum', label: 'Balance Summary' },
       ],
@@ -80,25 +78,36 @@ const Sidebar = ({ isSidebarOpen, isSidebarCollapsed, setIsSidebarOpen }) => {
 
   let finalAdminMenuItems = [];
   if (currentUser?.role === 'admin') {
-    if (hasViewPerm('Dashboard Overview')) finalAdminMenuItems.push(baseMenuItems[0]);
-    if (hasViewPerm('User Management'))
-      finalAdminMenuItems.push(adminMenuItems[1]);
-    if (hasViewPerm('Developer Settings')) finalAdminMenuItems.push(baseMenuItems[1]);
+    const adminSystemSubs = [];
 
-    const paymentSubs = [];
-    if (hasViewPerm('Payin Management')) paymentSubs.push({ id: '/dashboard/payin', label: 'Payin Order' }, { id: '/dashboard/payin-history', label: 'Payin History' });
-    if (hasViewPerm('Payout Management')) paymentSubs.push({ id: '/dashboard/payout', label: 'Payout Order' }, { id: '/dashboard/payout-history', label: 'Payout History' });
-    if (hasViewPerm('Transaction History')) paymentSubs.push({ id: '/dashboard/daily-summary', label: 'Daily Summary' }, { id: '/dashboard/bal-day-sum', label: 'Balance Summary' });
-    if (paymentSubs.length > 0)
-      finalAdminMenuItems.push({ id: 'recharge_management', label: 'Payment', icon: FiCreditCard, color: 'icon-emerald', subItems: paymentSubs });
+    // If they have Dashboard Overview, let them see Gateway Health
+    if (hasViewPerm('Dashboard Overview')) adminSystemSubs.push({ id: '/dashboard/system-overview', label: 'Gateway Health' });
 
-    if (hasViewPerm('Support Tickets')) finalAdminMenuItems.push(baseMenuItems[4]);
-    if (hasViewPerm('API Documentation')) finalAdminMenuItems.push(baseMenuItems[5]);
+    // User Management
+    if (hasViewPerm('User Management')) adminSystemSubs.push({ id: '/dashboard/users', label: 'User Management' });
+
+    // Payment / Transaction Management (System-wide)
+    if (hasViewPerm('Payin Management')) adminSystemSubs.push({ id: '/dashboard/system-payins', label: 'Payin' });
+    if (hasViewPerm('Payout Management')) adminSystemSubs.push({ id: '/dashboard/system-payouts', label: 'Payout' });
+    if (hasViewPerm('Transaction History')) {
+      adminSystemSubs.push({ id: '/dashboard/system-transactions', label: 'Transaction History' });
+      adminSystemSubs.push({ id: '/dashboard/system-balances', label: 'Balance' });
+    }
+
+    if (adminSystemSubs.length > 0) {
+      finalAdminMenuItems.push({
+        id: 'admin_system', label: 'Administration', icon: FiShield, color: 'icon-indigo',
+        subItems: adminSystemSubs
+      });
+    }
+
+    // Admins also get the standard merchant base menu so they can manage their own account
+    finalAdminMenuItems.push(...baseMenuItems);
   }
 
   const menuItems =
     currentUser?.role === 'superadmin' ? superAdminMenuItems :
-      currentUser?.role === 'admin' ? finalAdminMenuItems : baseMenuItems;
+      currentUser?.role === 'admin' ? (finalAdminMenuItems.length > 0 ? finalAdminMenuItems : baseMenuItems) : baseMenuItems;
 
   /* ── Auto-expand active parent ── */
   useEffect(() => {

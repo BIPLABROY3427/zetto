@@ -1,38 +1,29 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import TabsBar from './TabsBar';
 import './DashboardLayout.css';
+import Header from './Header';
+import Sidebar from './Sidebar';
+import TabsBar from './TabsBar';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const toggleSidebarMobile = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const toggleSidebarDesktop = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
   return (
     <div className="dashboard-layout">
-      {/* Mobile Overlay */}
-      <div 
-        className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} 
+      <div
+        className={`sidebar-mobile-overlay ${isSidebarOpen ? 'visible' : ''}`}
         onClick={() => setIsSidebarOpen(false)}
       ></div>
 
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
-        isSidebarCollapsed={isSidebarCollapsed} 
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        isSidebarCollapsed={isSidebarCollapsed}
         setIsSidebarOpen={setIsSidebarOpen}
       />
 
       <div className="dashboard-content">
-        <Header 
+        <Header
           toggleSidebarMobile={() => setIsSidebarOpen(!isSidebarOpen)}
           toggleSidebarDesktop={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />

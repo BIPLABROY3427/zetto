@@ -86,7 +86,7 @@ const AuthOtp = () => {
     if (countdown > 0) return;
     try {
       setResending(true);
-      await apiClient.post('/auth/signup', { email });
+      await apiClient.post('/auth/resend-signup-otp', { email });
       toast.success('New OTP sent!');
       setCountdown(60);
       setOtp(['', '', '', '', '', '']);

@@ -9,8 +9,9 @@ import moment from "moment-timezone";
 
 import Config from "./config/config.mjs";
 import "./services/webhookQueue.mjs";
+import "./services/payoutCron.mjs";
 
-const PORT = process.env.PORT || 5872;
+const PORT = process.env.PORT;
 
 // ================= TIMEZONE =================
 moment.tz.setDefault("Asia/Kolkata");
@@ -26,7 +27,9 @@ const server = http.createServer(app);
 app.set("trust proxy", 1); // ✅ safer for production (behind proxy)
 
 // ================= SECURITY =================
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 
 // ================= CORS =================
@@ -70,6 +73,9 @@ app.use((req, res, next) => {
 
 // ================= HEALTH CHECK =================
 app.get("/", (req, res) => { return res.status(200).json({ status: true, message: "Payment Gateway API Running 🚀", }); });
+
+// ================= STATIC FILES =================
+app.use('/uploads', express.static('uploads'));
 
 // ================= ROUTES =================
 import apiRoutes from "./routes/Routes.mjs";

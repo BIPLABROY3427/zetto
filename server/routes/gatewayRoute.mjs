@@ -1,19 +1,20 @@
 import express from 'express';
 import {
-    createPaymentIntent,
     aeroPayInCallback,
-    createPayoutIntent,
     aeroPayOutCallback,
-    queryPayinOrder,
-    queryPayoutOrder,
-    getMerchantBalance,
-    checkUtr,
+    bindPayinOrder,
     checkUpi,
-    getSystemHealth
+    checkUtr,
+    createPaymentIntent,
+    createPayoutIntent,
+    getMerchantBalance,
+    getSystemHealth,
+    queryBatchPayinOrders,
+    queryPayinOrder,
+    queryPayoutOrder
 } from '../controllers/gatewayController.mjs';
-import { apiKeyAuth } from '../middlewares/apiKeyAuth.mjs';
 import { apiOrJwtAuth } from '../middlewares/apiOrJwtAuth.mjs';
-import { verifyAuth, requireRole } from '../middlewares/roleAuth.mjs';
+import { requireRole, verifyAuth } from '../middlewares/roleAuth.mjs';
 
 const router = express.Router();
 
@@ -22,6 +23,8 @@ router.post('/payment', apiOrJwtAuth, createPaymentIntent);
 router.post('/payout', apiOrJwtAuth, createPayoutIntent);
 router.get('/payin/query', apiOrJwtAuth, queryPayinOrder);
 router.get('/payout/query', apiOrJwtAuth, queryPayoutOrder);
+router.post('/payin/bind', apiOrJwtAuth, bindPayinOrder);
+router.post('/payin/querybatch', apiOrJwtAuth, queryBatchPayinOrders);
 router.get('/balance', apiOrJwtAuth, getMerchantBalance);
 router.post('/utrcheck', apiOrJwtAuth, checkUtr);
 router.post('/upicheck', apiOrJwtAuth, checkUpi);
@@ -30,7 +33,7 @@ router.post('/upicheck', apiOrJwtAuth, checkUpi);
 router.post('/aeropay/callback', aeroPayInCallback);
 router.post('/aeropay/payoutcallback', aeroPayOutCallback);
 
-// --- Superadmin System Health ---
-router.get('/system/health', verifyAuth, requireRole('superadmin'), getSystemHealth);
+// --- Superadmin / Admin System Health ---
+router.get('/system/health', verifyAuth, requireRole('superadmin', 'admin'), getSystemHealth);
 
 export default router;

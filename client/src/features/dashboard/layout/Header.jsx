@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { FiMenu, FiSearch, FiBell, FiChevronDown, FiSettings, FiActivity, FiLogOut, FiArrowDownRight, FiUserPlus, FiMessageSquare } from 'react-icons/fi';
+import React, { useEffect, useRef, useState } from 'react';
+import { FiActivity, FiBell, FiChevronDown, FiLogOut, FiMenu, FiMessageSquare, FiSearch, FiSettings } from 'react-icons/fi';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../../services/apiClient';
 import './Header.css';
 
@@ -9,7 +9,7 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+
   const profileRef = useRef(null);
   const notifRef = useRef(null);
   const navigate = useNavigate();
@@ -27,11 +27,11 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    
+
     // Poll for notifications
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       clearInterval(interval);
@@ -59,7 +59,7 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
   // Generate Breadcrumbs
   const getBreadcrumbs = () => {
     const paths = location.pathname.split('/').filter(p => p);
-    
+
     return (
       <div className="breadcrumbs">
         {paths.map((path, index) => {
@@ -80,19 +80,19 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
     <header className="top-navbar">
       <div className="nav-left">
         <button className="nav-toggle-btn" onClick={() => {
-            if (window.innerWidth <= 1024) toggleSidebarMobile();
-            else toggleSidebarDesktop();
+          if (window.innerWidth <= 1024) toggleSidebarMobile();
+          else toggleSidebarDesktop();
         }}>
           <FiMenu size={22} />
         </button>
         {getBreadcrumbs()}
       </div>
-      
+
       <div className="nav-right">
         {/* Quick action + search */}
         <div className="nav-search hidden-mobile">
-            <FiSearch className="nav-search-icon" />
-            <input type="text" placeholder="Quick search..." />
+          <FiSearch className="nav-search-icon" />
+          <input type="text" placeholder="Quick search..." />
         </div>
 
         {/* Notifications Dropdown */}
@@ -162,8 +162,8 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
 
         {/* Profile Dropdown */}
         <div className="nav-dropdown-wrapper" ref={profileRef}>
-          <div 
-            className="user-profile-btn" 
+          <div
+            className="user-profile-btn"
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
           >
             <div className="user-avatar">
@@ -188,8 +188,8 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
                 </div>
               </div>
               <div className="dropdown-links">
-                <button 
-                  className="dropdown-link-item" 
+                <button
+                  className="dropdown-link-item"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     navigate('/dashboard/account-settings');
@@ -197,8 +197,8 @@ const Header = ({ toggleSidebarMobile, toggleSidebarDesktop }) => {
                 >
                   <FiSettings /> Account Settings
                 </button>
-                <button 
-                  className="dropdown-link-item" 
+                <button
+                  className="dropdown-link-item"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     navigate('/dashboard/activity-log');

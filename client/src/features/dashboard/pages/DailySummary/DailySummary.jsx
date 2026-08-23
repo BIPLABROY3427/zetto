@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../../../services/apiClient';
+import { useEffect, useState } from 'react';
+import { FiCalendar, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-import { FiSearch, FiRefreshCw, FiCalendar } from 'react-icons/fi';
+import api from '../../../../services/apiClient';
 import './DailySummary.css';
 
 const statusClass = (s) => {

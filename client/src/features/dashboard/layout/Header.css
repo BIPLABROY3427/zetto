@@ -342,13 +342,22 @@
 /* ── Mobile: hide non-essential items ── */
 @media (max-width: 768px) {
   .hidden-mobile { display: none !important; }
-  .top-navbar { padding: 0 1rem; }
+  .top-navbar { padding: 0 0.75rem; }
   .nav-search input { width: 100px; }
   .user-info { display: none; }
+  .nav-right { gap: 0.35rem; }
 }
 
 @media (max-width: 480px) {
   .nav-search { display: none; }
+  .nav-dropdown-menu {
+    right: -10px;
+    min-width: 280px !important;
+  }
+  .notif-menu {
+    min-width: 280px !important;
+    max-width: calc(100vw - 20px);
+  }
 }
 
 /* ═══════════════════════════════════════════

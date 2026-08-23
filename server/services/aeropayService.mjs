@@ -1,11 +1,11 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-const API_BASE = process.env.AEROPAY_API_BASE || 'https://api.aeropay11.live/api';
-const API_KEY = process.env.AEROPAY_API_KEY || '4Ls142Y10CuV57e56881';
-const MERCH_NO = process.env.AEROPAY_MERCH_NO || 'xbat';
-const OUR_WEBHOOK_URL_PAYIN = process.env.AEROPAY_WEBHOOK_PAYIN || 'https://api.xbat.in/api/v1/gateway/aeropay/callback';
-const OUR_WEBHOOK_URL_PAYOUT = process.env.AEROPAY_WEBHOOK_PAYOUT || 'https://api.xbat.in/api/v1/gateway/aeropay/payoutcallback';
+const API_BASE = process.env.AEROPAY_API_BASE;
+const API_KEY = process.env.AEROPAY_API_KEY;
+const MERCH_NO = process.env.AEROPAY_MERCH_NO;
+const OUR_WEBHOOK_URL_PAYIN = process.env.AEROPAY_WEBHOOK_PAYIN;
+const OUR_WEBHOOK_URL_PAYOUT = process.env.AEROPAY_WEBHOOK_PAYOUT;
 
 /**
  * Generates MD5 signature for AeroPay API
@@ -40,7 +40,7 @@ export const initiatePayIn = async (orderNo, amount) => {
         currency: "INR",
         notifyUrl: OUR_WEBHOOK_URL_PAYIN,
     };
-    
+
     payload.sign = generateSign(payload);
 
     try {
@@ -61,13 +61,13 @@ export const initiatePayOut = async (orderNo, amount, bankDetails) => {
         orderNo,
         amount: String(amount),
         currency: "INR",
-        accNo: bankDetails.accountNumber,
-        accName: bankDetails.accountName,
-        ifscCode: bankDetails.ifscCode,
-        mobile: bankDetails.mobile,
+        acctNo: bankDetails.accountNumber,
+        acctName: bankDetails.accountName,
+        acctCode: bankDetails.ifscCode,
+        mobile: bankDetails.mobile || '9999999999',
         notifyUrl: OUR_WEBHOOK_URL_PAYOUT,
     };
-    
+
     payload.sign = generateSign(payload);
 
     try {
@@ -75,7 +75,8 @@ export const initiatePayOut = async (orderNo, amount, bankDetails) => {
         return response.data;
     } catch (error) {
         console.error("AeroPay PayOut Error:", error.response?.data || error.message);
-        throw new Error("Gateway failed to initiate payout");
+        const errMsg = error.response?.data?.msg || "Gateway failed to initiate payout";
+        throw new Error(errMsg);
     }
 };
 
@@ -120,12 +121,18 @@ export const queryUpstreamPayOut = async (orderNo) => {
  */
 export const upstreamBalance = async () => {
     const payload = {
-        merchNo: MERCH_NO
+        merchNo: MERCH_NO,
+        timestamp: String(Date.now()), // milliseconds
+        currency: "INR"
     };
     payload.sign = generateSign(payload);
 
     try {
-        const response = await axios.post(`${API_BASE}/balance/query`, payload);
+        const response = await axios.post(`${API_BASE}/balance`, payload, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
         return response.data;
     } catch (error) {
         if (error.response && error.response.data) {
@@ -171,5 +178,42 @@ export const upstreamUpiCheck = async (upiId) => {
         return response.data;
     } catch (error) {
         throw new Error("Failed to check UPI upstream");
+    }
+};
+
+/**
+ * Force-bind a UTR to an order upstream
+ */
+export const bindUpstreamOrder = async (orderNo, utr, amount) => {
+    const payload = {
+        orderNo,
+        utr,
+        amount: String(amount)
+    };
+    payload.sign = generateSign(payload);
+
+    try {
+        const response = await axios.post(`${API_BASE}/payIn/bind`, payload);
+        return response.data;
+    } catch (error) {
+        throw new Error("Failed to bind order upstream");
+    }
+};
+
+/**
+ * Query multiple Pay-In orders upstream
+ */
+export const queryBatchUpstream = async (orderNos) => {
+    const payload = {
+        merchNo: MERCH_NO,
+        orderNos // Comma separated string e.g., "ORD123,ORD124"
+    };
+    payload.sign = generateSign(payload);
+
+    try {
+        const response = await axios.post(`${API_BASE}/payIn/queryBatch`, payload);
+        return response.data;
+    } catch (error) {
+        throw new Error("Failed to batch query upstream");
     }
 };

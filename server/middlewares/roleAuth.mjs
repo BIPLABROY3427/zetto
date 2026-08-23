@@ -22,7 +22,7 @@ export const verifyAuth = async (req, res, next) => {
         }
 
         if (req.user.isActive === false) {
-            return res.status(403).json({ message: 'Your account has been deactivated. Please contact support.' });
+            return res.status(403).json({ message: 'Your account has been banned. Please contact support for further assistance.' });
         }
         
         next();

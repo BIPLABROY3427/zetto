@@ -8,4 +8,7 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    allowedHosts: ['client.xbat.in', 'localhost']
+  }
 })

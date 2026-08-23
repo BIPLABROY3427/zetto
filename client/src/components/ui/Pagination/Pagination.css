@@ -1,0 +1,41 @@
+.pg-pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-panel);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pg-pagination-info {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.pg-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pg-pagination-limit {
+  width: auto;
+  min-width: 120px;
+  padding: 0.25rem 0.5rem;
+  height: 36px;
+}
+
+.pg-pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pg-pagination-current {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 0 0.5rem;
+}

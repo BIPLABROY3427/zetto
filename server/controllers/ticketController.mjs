@@ -36,15 +36,36 @@ export const createTicket = async (req, res) => {
  */
 export const getTickets = async (req, res) => {
   try {
+    const { page = 1, limit = 10, status } = req.query;
     const isAdmin = req.user.role === 'superadmin' || req.user.role === 'admin';
     const query = isAdmin ? {} : { merchantId: req.user._id };
 
-    const tickets = await Ticket.find(query)
-      .populate('merchantId', 'name email')
-      .populate('messages.senderId', 'name role')
-      .sort({ updatedAt: -1 });
+    if (status && status !== 'all') {
+      query.status = status;
+    }
 
-    res.status(200).json({ status: true, tickets });
+    const skipAmount = (parseInt(page) - 1) * parseInt(limit);
+
+    const [tickets, totalCount] = await Promise.all([
+      Ticket.find(query)
+        .populate('merchantId', 'name email')
+        .populate('messages.senderId', 'name role')
+        .sort({ updatedAt: -1 })
+        .skip(skipAmount)
+        .limit(parseInt(limit)),
+      Ticket.countDocuments(query)
+    ]);
+
+    res.status(200).json({ 
+      status: true, 
+      tickets,
+      pagination: {
+        totalRecords: totalCount,
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching tickets:', error);
     res.status(500).json({ status: false, message: 'Server error fetching tickets' });

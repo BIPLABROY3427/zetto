@@ -28,12 +28,18 @@
   scrollbar-color: #e2e8f0 transparent;
 }
 
-.main-content::-webkit-scrollbar { width: 5px; }
+.main-content::-webkit-scrollbar {
+  width: 5px;
+}
+
 .main-content::-webkit-scrollbar-thumb {
   background: #e2e8f0;
   border-radius: 5px;
 }
-.main-content::-webkit-scrollbar-track { background: transparent; }
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
 
 /* Mobile overlay backdrop for sidebar */
 .sidebar-mobile-overlay {

@@ -14,7 +14,7 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['payment', 'withdrawal', 'refund'],
+      enum: ['payment', 'withdrawal', 'refund', 'freeze', 'unfreeze'],
       required: true,
     },
     amount: {
@@ -28,7 +28,7 @@ const transactionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed'],
+      enum: ['pending', 'completed', 'failed', 'queued'],
       default: 'pending',
     },
     customerDetails: {
