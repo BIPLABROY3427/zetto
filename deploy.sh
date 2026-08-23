@@ -286,6 +286,9 @@ echo ""
 echo "🔍 Checking Backend port..."
 if ! fuser "$BACKEND_PORT/tcp" >/dev/null 2>&1; then
     echo "❌ Backend is NOT running on port $BACKEND_PORT"
+    echo "📜 --- BACKEND CRASH LOGS ---"
+    cat "$BACKEND_PATH/backend.log" || true
+    echo "-----------------------------"
     exit 1
 fi
 echo "✅ Backend is running on port $BACKEND_PORT."

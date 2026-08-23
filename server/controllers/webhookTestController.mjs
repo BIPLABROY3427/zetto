@@ -1,6 +1,6 @@
 import Order from '../models/Order.mjs';
 import Merchant from '../models/Merchant.mjs';
-import { dispatchWebhook } from '../Utils/webhookSender.mjs';
+import { dispatchWebhook } from '../utils/webhookSender.mjs';
 
 /**
  * @desc    Test Endpoint to Simulate a Bank successfully settling an Order Intent.
