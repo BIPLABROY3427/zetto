@@ -305,7 +305,19 @@ const UserManagement = () => {
             <button className="pg-btn pg-btn-secondary" onClick={fetchUsers}>↻ Refresh</button>
             {isSuperAdmin && (
               <>
-                <button className="pg-btn pg-btn-secondary" onClick={() => setIsGlobalCommModalOpen(true)}>
+                <button className="pg-btn pg-btn-secondary" onClick={() => {
+                  const regularUser = users.find(u => u.role === 'user') || users[0];
+                  if (regularUser) {
+                    setGlobalCommData(prev => ({
+                      ...prev,
+                      commission: regularUser.commission || {
+                        payin: { percent: (regularUser.commissionRate || 0.05) * 100, flat: 0 },
+                        payout: { percent: (regularUser.commissionRate || 0.05) * 100, flat: 0 }
+                      }
+                    }));
+                  }
+                  setIsGlobalCommModalOpen(true);
+                }}>
                   Global Commission
                 </button>
                 <button className="pg-btn pg-btn-primary" onClick={() => setIsCreateModalOpen(true)}>

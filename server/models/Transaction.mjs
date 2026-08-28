@@ -55,7 +55,7 @@ const transactionSchema = new mongoose.Schema(
     },
     webhookStatus: {
       type: String,
-      enum: ['pending', 'sent', 'failed'],
+      enum: ['pending', 'pending_retry', 'sent', 'failed'],
       default: 'pending',
     },
     webhookPayload: {
