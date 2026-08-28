@@ -22,7 +22,7 @@ SERVER_USER="root"
 SSH_SOCKET="/tmp/ssh-getway-master"
 
 # VPS paths (Update these according to your VPS setup)
-BACKEND_PATH="/www/wwwroot/GetwayBackend"
+BACKEND_PATH="/www/wwwroot/api.zetto.in"
 FRONTEND_PATH="/www/wwwroot/zetto.in"
 
 # Ports
