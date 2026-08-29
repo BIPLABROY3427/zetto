@@ -2,6 +2,8 @@ import Transaction from '../models/Transaction.mjs';
 import User from '../models/User.mjs';
 import { queryUpstreamPayIn, queryUpstreamPayOut } from '../services/aeropayService.mjs';
 import { sendWebhookToMerchant } from './gatewayController.mjs';
+import { logActivity } from '../services/activityLogger.mjs';
+import axios from 'axios';
 
 /**
  * @desc    Get dashboard aggregated stats and chart data
@@ -216,22 +218,59 @@ export const resendWebhook = async (req, res) => {
     }
 
     const merchant = await User.findById(transaction.merchantId);
-    if (!merchant) {
-      return res.status(404).json({ success: false, message: 'Merchant not found' });
-    }
-
-    if (!merchant.callbackUrl) {
+    if (!merchant || !merchant.callbackUrl) {
       return res.status(400).json({ success: false, message: 'Merchant does not have a callback URL set' });
     }
 
-    await sendWebhookToMerchant(merchant, transaction);
+    // Prepare payload
+    const payload = {
+        transactionId: transaction.transactionId,
+        status: transaction.status,
+        amount: transaction.amount,
+        type: transaction.type,
+        timestamp: new Date().toISOString()
+    };
+    
+    const finalPayload = {
+        ...payload,
+        secret: merchant.webhookSecret || 'default_secret'
+    };
 
-    res.status(200).json({
-      success: true,
-      message: `Webhook queued for delivery. Status: ${transaction.webhookStatus}`,
-      webhookStatus: transaction.webhookStatus,
-      webhookResponse: transaction.webhookResponse
-    });
+    let webhookResponseData = null;
+    let isSuccess = false;
+
+    try {
+        const response = await axios.post(merchant.callbackUrl, finalPayload, { timeout: 5000 });
+        webhookResponseData = response.data;
+        isSuccess = true;
+    } catch (error) {
+        webhookResponseData = error.response?.data || error.message;
+        isSuccess = false;
+    }
+
+    // If it was already sent successfully before, we DO NOT change the DB status.
+    // "succes wala pending nahe hosakte", "agr sent hogaya tho ow change nahe hoga"
+    if (transaction.webhookStatus !== 'sent') {
+        transaction.webhookStatus = isSuccess ? 'sent' : 'failed';
+        transaction.webhookResponse = webhookResponseData;
+        await transaction.save();
+    }
+
+    if (isSuccess) {
+        return res.status(200).json({
+            success: true,
+            message: 'Webhook sent successfully!',
+            webhookStatus: transaction.webhookStatus,
+            webhookResponse: webhookResponseData
+        });
+    } else {
+        return res.status(400).json({
+            success: false,
+            message: `Webhook failed: ${JSON.stringify(webhookResponseData)}`,
+            webhookStatus: transaction.webhookStatus,
+            webhookResponse: webhookResponseData
+        });
+    }
   } catch (error) {
     console.error('Resend Webhook Error:', error);
     res.status(500).json({ success: false, message: 'Server Error resending webhook' });
@@ -636,7 +675,7 @@ export const getKLineData = async (req, res) => {
     transactions.forEach(tx => {
       const hour = new Date(tx.createdAt).getHours();
       const amt = tx.amount;
-      
+
       hourlyData[hour]['Summary'] += amt;
 
       if (amt <= 200) {
@@ -655,6 +694,52 @@ export const getKLineData = async (req, res) => {
     res.status(200).json({ success: true, data: hourlyData });
   } catch (error) {
     console.error('getKLineData Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error retrieving K-Line stats' });
+    res.status(500).json({ success: false, message: 'Server Error generating K-Line data' });
+  }
+};
+
+/**
+ * @desc    Cancel a queued/pending payout and refund the merchant
+ * @route   POST /api/admin/transactions/:id/cancel-payout
+ * @access  Private (Requires Token & Admin/Superadmin Role)
+ */
+export const cancelPayoutQueue = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const transaction = await Transaction.findById(id).populate('merchantId', 'name email callbackUrl webhookSecret');
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    if (transaction.type !== 'withdrawal') {
+      return res.status(400).json({ success: false, message: 'Only payout (withdrawal) transactions can be cancelled' });
+    }
+    if (transaction.status !== 'pending' && transaction.status !== 'queued') {
+      return res.status(400).json({ success: false, message: `Cannot cancel transaction with status: ${transaction.status}` });
+    }
+
+    const refundAmount = transaction.amount + (transaction.commissionAmount || 0);
+    const merchant = await User.findOneAndUpdate(
+      { _id: transaction.merchantId._id },
+      { $inc: { walletBalance: refundAmount, totalWithdrawals: -transaction.amount } },
+      { new: true }
+    );
+
+    transaction.status = 'failed';
+    transaction.description = 'Cancelled by Admin';
+    await transaction.save();
+
+    if (merchant) {
+      sendWebhookToMerchant(merchant, transaction);
+    }
+
+    await logActivity(req.user._id, 'transaction_update', `Cancelled payout queue for TX: ${transaction.transactionId}`, req);
+
+    res.status(200).json({ success: true, message: 'Payout cancelled and refunded successfully', transaction });
+
+  } catch (error) {
+    console.error('Cancel Payout Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error cancelling payout' });
   }
 };

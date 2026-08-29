@@ -16,8 +16,8 @@ import { exportToCsv } from '../../../../utils/exportCsv';
 import './PayoutOrder.css';
 
 const statusClass = (s) => {
-  if (s === 'completed' || s === 'success') return 'pg-status pg-status-completed';
-  if (s === 'pending') return 'pg-status pg-status-pending';
+  if (s === 'completed' || s === 'success' || s === 'sent') return 'pg-status pg-status-completed';
+  if (s === 'pending' || s === 'queued' || s === 'pending_retry') return 'pg-status pg-status-pending';
   return 'pg-status pg-status-failed';
 };
 
@@ -139,6 +139,7 @@ const PayoutOrder = () => {
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="queued">Queued</option>
             <option value="failed">Failed</option>
           </select>
           <form className="pg-search-form" onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
@@ -207,7 +208,7 @@ const PayoutOrder = () => {
                         </div>
                       ) : '-'}
                     </td>
-                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status === 'queued' ? 'pending' : tx.status}</span></td>
                     <td>
                       <span className={statusClass(tx.webhookStatus || 'pending')}>
                         {tx.webhookStatus || 'pending'}
@@ -224,15 +225,13 @@ const PayoutOrder = () => {
                           <FiRefreshCw />
                         </button>
                       )}
-                      {(tx.status === 'completed' || tx.status === 'failed') && (
-                        <button
-                          className="pg-btn pg-btn-secondary pg-btn-sm"
-                          onClick={() => handleResendWebhook(tx._id)}
-                          title="Resend Webhook"
-                        >
-                          <FiRotateCw />
-                        </button>
-                      )}
+                      <button
+                        className="pg-btn pg-btn-secondary pg-btn-sm"
+                        onClick={() => handleResendWebhook(tx._id)}
+                        title="Resend Webhook"
+                      >
+                        <FiRotateCw />
+                      </button>
                     </td>
                   </tr>
                 ))}

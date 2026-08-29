@@ -13,12 +13,12 @@ export const updateWebhooks = async (req, res) => {
         const { callbackUrl, webhookSecret } = req.body;
 
         const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { 
-                callbackUrl, 
-                webhookSecret: webhookSecret || crypto.randomBytes(16).toString('hex') 
-            },
-            { new: true, runValidators: true }
+          userId,
+          {
+            callbackUrl,
+            webhookSecret: webhookSecret || crypto.randomBytes(16).toString('hex'),
+          },
+          { new: true, runValidators: true }
         );
 
         res.status(200).json({
@@ -46,7 +46,7 @@ export const updateWebhooks = async (req, res) => {
 export const resetApiKey = async (req, res) => {
     try {
         const userId = req.user._id;
-        
+
         // Generate a new 16-character alphanumeric API key (crypto hex)
         const newKey = crypto.randomBytes(8).toString('hex');
 
@@ -68,5 +68,38 @@ export const resetApiKey = async (req, res) => {
     } catch (error) {
         console.error('Reset API Key Error:', error);
         res.status(500).json({ success: false, message: 'Server error resetting API Key' });
+    }
+};
+
+/**
+ * @desc    Generate / Reset Webhook Secret for Merchant
+ * @route   POST /api/merchant/dashboard/settings/webhook-secret/reset
+ * @access  Private (Requires Token)
+ */
+export const resetWebhookSecret = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Generate a new 32-character hex secret
+        const newSecret = crypto.randomBytes(16).toString('hex');
+
+        // Update webhookSecret field
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { webhookSecret: newSecret } },
+            { new: true }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Webhook Secret reset successfully',
+            webhookSecret: updatedUser.webhookSecret
+        });
+
+        logActivity(userId, 'settings_update', 'Rotated Webhook Secret', req);
+
+    } catch (error) {
+        console.error('Reset Webhook Secret Error:', error);
+        res.status(500).json({ success: false, message: 'Server error resetting Webhook Secret' });
     }
 };

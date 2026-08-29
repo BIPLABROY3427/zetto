@@ -8,7 +8,7 @@ import Ticket from '../models/Ticket.mjs';
 export const createTicket = async (req, res) => {
   try {
     const { subject, initialMessage } = req.body;
-    
+
     if (!subject || !initialMessage) {
       return res.status(400).json({ status: false, message: 'Subject and initial message are required' });
     }
@@ -56,15 +56,15 @@ export const getTickets = async (req, res) => {
       Ticket.countDocuments(query)
     ]);
 
-    res.status(200).json({ 
-      status: true, 
+    res.status(200).json({
+      status: true,
       tickets,
       pagination: {
         totalRecords: totalCount,
         totalPages: Math.ceil(totalCount / parseInt(limit)),
         currentPage: parseInt(page),
-        limit: parseInt(limit)
-      }
+        limit: parseInt(limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching tickets:', error);
@@ -118,7 +118,7 @@ export const addMessage = async (req, res) => {
       senderId: req.user._id,
       text
     });
-    
+
     // Auto re-open ticket if a merchant replies to a resolved ticket
     if (!isAdmin && ticket.status === 'resolved') {
         ticket.status = 'open';
@@ -148,7 +148,7 @@ export const markAsRead = async (req, res) => {
     if (!ticket) return res.status(404).json({ status: false, message: 'Ticket not found' });
 
     const isAdmin = req.user.role === 'superadmin' || req.user.role === 'admin';
-    
+
     // If I am Admin, mark all merchant messages as read
     // If I am Merchant, mark all admin messages as read
     let modified = false;

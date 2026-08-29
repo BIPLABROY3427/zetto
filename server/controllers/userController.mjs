@@ -172,7 +172,8 @@ export const updateUserPermissions = async (req, res) => {
       updateData.frozenAmount = newFrozenAmount;
       netChange = newFrozenAmount - (targetUser.frozenAmount || 0);
       if (netChange !== 0) {
-        updateData.walletBalance = (targetUser.walletBalance || 0) - netChange;
+        // We do NOT set updateData.walletBalance directly here!
+        // It will be passed as an $inc operator to ensure atomicity.
       }
     }
 
@@ -189,9 +190,14 @@ export const updateUserPermissions = async (req, res) => {
       updateData.role = role;
     }
 
+    const updateQuery = { $set: updateData };
+    if (netChange !== 0) {
+      updateQuery.$inc = { walletBalance: -netChange };
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      updateData,
+      updateQuery,
       { new: true, runValidators: true }
     ).select('-password');
 

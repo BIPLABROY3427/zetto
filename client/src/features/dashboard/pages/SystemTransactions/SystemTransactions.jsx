@@ -3,12 +3,14 @@ import { FiDatabase, FiEye, FiRefreshCw, FiRotateCw, FiSearch, FiX } from 'react
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Pagination from '../../../../components/ui/Pagination/Pagination';
+import ConfirmDialog from '../../../../components/ui/ConfirmDialog/ConfirmDialog';
+import useConfirm from '../../../../components/ui/ConfirmDialog/useConfirm';
 import api from '../../../../services/apiClient';
 import './SystemTransactions.css';
 
 const statusClass = (s) => {
-  if (s === 'completed' || s === 'sent' || s === 'success') return 'pg-status pg-status-completed';
-  if (s === 'pending') return 'pg-status pg-status-pending';
+  if (s === 'completed' || s === 'success' || s === 'sent') return 'pg-status pg-status-completed';
+  if (s === 'pending' || s === 'queued' || s === 'pending_retry') return 'pg-status pg-status-pending';
   return 'pg-status pg-status-failed';
 };
 
@@ -27,6 +29,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [pagination, setPagination] = useState(null);
+  const { confirm, confirmProps } = useConfirm();
 
   useEffect(() => { setType(initialType); }, [initialType]);
 
@@ -67,8 +70,30 @@ const SystemTransactions = ({ initialType = 'all' }) => {
     }
   };
 
+  const handleCancelPayoutQueue = async (tx) => {
+    const ok = await confirm({
+      title: 'Cancel Payout?',
+      message: `Are you sure you want to cancel payout for ${tx.transactionId}? The amount will be refunded and a failure webhook will be sent.`,
+      confirmText: 'Yes, Cancel',
+      cancelText: 'No',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await api.post(`/dashboard/admin/transactions/${tx._id}/cancel-payout`);
+      if (res.data.success) {
+        toast.success(res.data.message || 'Payout cancelled');
+        fetchTransactions();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel payout');
+    }
+  };
+
   return (
     <div className="pg-root">
+      <ConfirmDialog {...confirmProps} />
       <div className="pg-toolbar">
         <form className="pg-filters" onSubmit={handleSearch}>
           <div className="st-search-wrap">
@@ -81,6 +106,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="queued">Queued</option>
             <option value="failed">Failed</option>
           </select>
           <select className="pg-select" value={type} onChange={e => setType(e.target.value)}>
@@ -155,11 +181,14 @@ const SystemTransactions = ({ initialType = 'all' }) => {
                           : '-'
                       )}
                     </td>
-                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status === 'queued' ? 'pending' : tx.status}</span></td>
                     <td><span className={statusClass(tx.webhookStatus || 'pending')}>{tx.webhookStatus || 'pending'}</span></td>
                     <td className="st-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td>
-                      <div className="st-actions">
+                        <div className="st-actions">
+                        {tx.type === 'withdrawal' && (tx.status === 'pending' || tx.status === 'queued') && (
+                          <button className="pg-btn pg-btn-secondary pg-btn-sm" style={{color: '#ef4444', borderColor: '#ef444433'}} onClick={() => handleCancelPayoutQueue(tx)} title="Cancel Payout"><FiX /></button>
+                        )}
                         {tx.status === 'pending' && (
                           <button className="pg-btn pg-btn-secondary pg-btn-sm" onClick={() => handleSyncTransaction(tx._id)} title="Sync Status"><FiRefreshCw /></button>
                         )}

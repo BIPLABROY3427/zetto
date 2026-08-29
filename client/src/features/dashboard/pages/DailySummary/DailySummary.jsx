@@ -5,8 +5,8 @@ import api from '../../../../services/apiClient';
 import './DailySummary.css';
 
 const statusClass = (s) => {
-  if (s === 'completed' || s === 'success') return 'pg-status pg-status-completed';
-  if (s === 'pending') return 'pg-status pg-status-pending';
+  if (s === 'completed' || s === 'success' || s === 'sent') return 'pg-status pg-status-completed';
+  if (s === 'pending' || s === 'queued' || s === 'pending_retry') return 'pg-status pg-status-pending';
   return 'pg-status pg-status-failed';
 };
 
@@ -69,6 +69,7 @@ const DailySummary = () => {
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="queued">Queued</option>
             <option value="failed">Failed</option>
           </select>
           <button type="submit" className="pg-btn pg-btn-secondary"><FiSearch /> Search</button>
@@ -106,7 +107,7 @@ const DailySummary = () => {
                     <td className="ds-id">{tx.transactionId}</td>
                     <td className="ds-amount">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
                     <td><span className="pg-badge pg-badge-inr">INR</span></td>
-                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status === 'queued' ? 'pending' : tx.status}</span></td>
                     <td className="ds-date">{new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                   </tr>
                 ))}

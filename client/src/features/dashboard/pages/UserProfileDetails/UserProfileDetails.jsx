@@ -13,8 +13,8 @@ import api from '../../../../services/apiClient';
 import './UserProfileDetails.css';
 
 const statusClass = (s) => {
-  if (s === 'completed' || s === 'success') return 'pg-status pg-status-completed';
-  if (s === 'pending') return 'pg-status pg-status-pending';
+  if (s === 'completed' || s === 'success' || s === 'sent') return 'pg-status pg-status-completed';
+  if (s === 'pending' || s === 'queued' || s === 'pending_retry') return 'pg-status pg-status-pending';
   return 'pg-status pg-status-failed';
 };
 
@@ -210,7 +210,7 @@ const UserProfileDetails = () => {
                     <td style={{ fontWeight: 700 }}>₹{Number(tx.amount).toLocaleString('en-IN')}</td>
                     <td style={{ color: '#ef4444' }}>₹{Number(tx.commissionAmount || 0).toLocaleString('en-IN')}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--primary)' }}>{tx.transactionId}</td>
-                    <td><span className={statusClass(tx.status)}>{tx.status}</span></td>
+                    <td><span className={statusClass(tx.status)}>{tx.status === 'queued' ? 'pending' : tx.status}</span></td>
                     <td><span className={statusClass(tx.webhookStatus || 'pending')}>{tx.webhookStatus || 'pending'}</span></td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
                       {new Date(tx.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}

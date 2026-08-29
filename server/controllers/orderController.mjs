@@ -1,5 +1,4 @@
 import Order from '../models/Order.mjs';
-import QRCode from 'qrcode';
 
 /**
  * @desc    Generate an Order dynamically assigning a random valid UPI destination
@@ -9,7 +8,7 @@ import QRCode from 'qrcode';
 export const createOrder = async (req, res) => {
   try {
     const { amount } = req.body;
-    const merchant = req.merchant; 
+    const merchant = req.merchant;
 
     // Validate Input
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -22,9 +21,10 @@ export const createOrder = async (req, res) => {
     });
 
     if (eligibleUpis.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No eligible payment vectors available. Transaction limits may be exceeded or no UPI mapping exists.' 
+      return res.status(400).json({
+        success: false,
+        message:
+          'No eligible payment vectors available. Transaction limits may be exceeded or no UPI mapping exists.',
       });
     }
 
@@ -40,14 +40,7 @@ export const createOrder = async (req, res) => {
     expirationTime.setMinutes(expirationTime.getMinutes() + 10);
 
     // 1. Construct standard UPI string mapped exactly to the securely drawn assignedUpiTarget
-    const upiString = `upi://pay?pa=${assignedUpiTarget.upiId}&pn=${encodeURIComponent(merchant.name)}&am=${amount}&tr=${orderId}&cu=INR`;
-
-    // 2. Base64 Encode cleanly
-    const qrCodeDataUri = await QRCode.toDataURL(upiString, {
-      margin: 2,
-      scale: 10,
-      color: { dark: '#0f172a', light: '#ffffff' }
-    });
+    const paymentUrl = `upi://pay?pa=${assignedUpiTarget.upiId}&pn=${encodeURIComponent(merchant.name)}&am=${amount}&tr=${orderId}&cu=INR`;
 
     // 3. Persist intended target and TTL timestamp so we can track payment status synchronously
     const newOrder = await Order.create({
@@ -74,8 +67,7 @@ export const createOrder = async (req, res) => {
         assignedUpi: newOrder.assignedUpi
       },
       payment: {
-        upiString,
-        qrCode: qrCodeDataUri
+        payment_url: paymentUrl
       }
     });
 

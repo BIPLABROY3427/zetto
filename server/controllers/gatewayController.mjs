@@ -223,15 +223,15 @@ export const createPayoutIntent = async (req, res) => {
         const payoutFee = (Number(amount) * (payoutSettings.percent / 100)) + payoutSettings.flat;
         const totalDeduction = Number(amount) + payoutFee;
 
-        // Check frozen amount
+        // Check frozen amount (Available Balance Check)
         const frozenAmt = merchant.frozenAmount || 0;
         if ((merchant.walletBalance - frozenAmt) < totalDeduction) {
             return res.status(400).json({ success: false, message: 'Insufficient available balance.' });
         }
 
-        // Atomically deduct balance
+        // Atomically deduct balance ensuring the balance is AT LEAST totalDeduction + frozenAmt
         const updatedMerchant = await User.findOneAndUpdate(
-            { _id: merchant._id, walletBalance: { $gte: totalDeduction } },
+            { _id: merchant._id, walletBalance: { $gte: totalDeduction + frozenAmt } },
             {
                 $inc: {
                     walletBalance: -totalDeduction,
@@ -287,7 +287,7 @@ export const createPayoutIntent = async (req, res) => {
                     { $set: { status: 'queued', description: 'Queued due to insufficient upstream balance' } },
                     { new: true }
                 );
-                
+
                 return res.status(200).json({
                     success: true,
                     message: 'Payout queued due to system limits. It will be processed automatically.',
@@ -313,7 +313,7 @@ export const createPayoutIntent = async (req, res) => {
                     }
                 );
             }
-            
+
             return res.status(500).json({ success: false, message: 'Gateway failed to initiate payout. Amount refunded.' });
         }
     } catch (error) {
@@ -373,7 +373,7 @@ export const aeroPayOutCallback = async (req, res) => {
         } else if (['2', '4', '5'].includes(String(orderState))) {
             // Failed (2,4) or Reversed (5) -> Refund amount + fee
             const newStatus = String(orderState) === '5' ? 'refunded' : 'failed';
-            
+
             const updatedTx = await Transaction.findOneAndUpdate(
                 { transactionId: orderNo, status: { $nin: ['failed', 'refunded'] } },
                 { $set: { status: newStatus } },
@@ -493,7 +493,7 @@ export const queryPayoutOrder = async (req, res) => {
 
                         const merchant = await User.findById(updatedTx.merchantId);
                         if (merchant) sendWebhookToMerchant(merchant, updatedTx);
-                        
+
                         transaction.status = 'failed';
                     }
 

@@ -29,11 +29,11 @@ export const processPayment = async (req, res) => {
     // 1. Update Merchant Balance Atomically using $inc
     const updatedMerchant = await User.findOneAndUpdate(
       { _id: merchantId },
-      { 
-        $inc: { 
-          walletBalance: netAmount, 
-          totalReceived: amount 
-        } 
+      {
+        $inc: {
+          walletBalance: netAmount,
+          totalReceived: amount,
+        },
       },
       { new: true }
     );
@@ -81,43 +81,52 @@ export const requestWithdrawal = async (req, res) => {
     const merchantId = req.user._id;
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Valid requested amount is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Valid requested amount is required' });
     }
 
     // Calculate total deduction requirement (Requested amount + 5% platform fee)
     const withdrawalFee = amount * COMMISSION_RATE;
     const totalDeductionRequired = amount + withdrawalFee;
 
-    // 1. Safely deduct from Merchant Wallet Atomically. 
-    // The query criteria ({ walletBalance: { $gte: totalDeductionRequired } }) prevents race conditions.
+    // Fetch the merchant to get their current frozenAmount
+    const merchant = await User.findById(merchantId);
+    if (!merchant) {
+      return res.status(404).json({ success: false, message: 'Merchant not found' });
+    }
+    const frozenAmt = merchant.frozenAmount || 0;
+
+    // 1. Safely deduct from Merchant Wallet Atomically.
+    // The query criteria ({ walletBalance: { $gte: totalDeductionRequired + frozenAmt } }) prevents race conditions and protects frozen funds.
     const updatedMerchant = await User.findOneAndUpdate(
-      { _id: merchantId, walletBalance: { $gte: totalDeductionRequired } },
+      { _id: merchantId, walletBalance: { $gte: totalDeductionRequired + frozenAmt } },
       {
         $inc: {
           walletBalance: -totalDeductionRequired,
-          totalWithdrawals: amount
-        }
+          totalWithdrawals: amount,
+        },
       },
       { new: true }
     );
 
     if (!updatedMerchant) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Insufficient wallet balance or merchant not found. You need ₹${totalDeductionRequired} to withdraw ₹${amount} due to a 5% fee.` 
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient wallet balance or merchant not found. You need ₹${totalDeductionRequired} to withdraw ₹${amount} due to a 5% fee.`,
       });
     }
 
     // 2. Create the Transaction Record
     const txId = `tx_wout_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const newTransaction = await Transaction.create({
       merchantId,
       transactionId: txId,
       type: 'withdrawal',
-      amount: amount, 
-      status: 'completed', 
-      description: description || `Withdrawal of ₹${amount} with ₹${withdrawalFee} fee`
+      amount: amount,
+      status: 'completed',
+      description: description || `Withdrawal of ₹${amount} with ₹${withdrawalFee} fee`,
     });
 
     res.status(200).json({
@@ -128,10 +137,9 @@ export const requestWithdrawal = async (req, res) => {
         feeDeducted: withdrawalFee,
         totalDeducted: totalDeductionRequired,
         newBalance: updatedMerchant.walletBalance,
-        transaction: newTransaction
-      }
+        transaction: newTransaction,
+      },
     });
-
   } catch (error) {
     console.error('Withdrawal Error:', error);
     res.status(500).json({ success: false, message: 'Withdrawal failed' });

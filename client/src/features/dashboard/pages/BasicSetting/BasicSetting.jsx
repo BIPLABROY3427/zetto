@@ -30,6 +30,12 @@ const BasicSetting = () => {
   const [copied, setCopied] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [resetting, setResetting] = useState(false);
+  
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [resettingSecret, setResettingSecret] = useState(false);
+
   const { confirm, confirmProps } = useConfirm();
 
   const fetchSettings = async () => {
@@ -40,6 +46,7 @@ const BasicSetting = () => {
         setPayInUrl(data.settings.callbackUrl || '');
         setPayOutUrl(data.settings.callbackUrl || '');
         setApiKey(data.settings.activeApiKey || '');
+        setWebhookSecret(data.settings.webhookSecret || '');
       }
     } catch {
       toast.error('Failed to load developer settings');
@@ -90,9 +97,41 @@ const BasicSetting = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleResetWebhookSecret = async () => {
+    const ok = await confirm({
+      title: 'Reset Webhook Secret?',
+      message: 'This will immediately invalidate your current webhook secret. Any active webhook integrations will need to be updated with the new secret to verify payloads.',
+      confirmText: 'Yes, Reset Secret',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      setResettingSecret(true);
+      await api.post('/dashboard/settings/webhook-secret/reset');
+      toast.success('Webhook Secret reset successfully');
+      fetchSettings();
+    } catch {
+      toast.error('Failed to reset Webhook Secret');
+    } finally {
+      setResettingSecret(false);
+    }
+  };
+
+  const handleCopySecret = () => {
+    if (!webhookSecret) return;
+    navigator.clipboard.writeText(webhookSecret);
+    setCopiedSecret(true);
+    setTimeout(() => setCopiedSecret(false), 2000);
+  };
+
   const maskedKey = apiKey
     ? apiKey.slice(0, 8) + '•'.repeat(Math.max(0, apiKey.length - 12)) + apiKey.slice(-4)
     : '•'.repeat(36);
+
+  const maskedSecret = webhookSecret
+    ? webhookSecret.slice(0, 8) + '•'.repeat(Math.max(0, webhookSecret.length - 12)) + webhookSecret.slice(-4)
+    : '•'.repeat(32);
 
   if (loading) {
     return (
@@ -238,6 +277,50 @@ const BasicSetting = () => {
                   onChange={e => setPayOutUrl(e.target.value)}
                 />
                 {payOutUrl && <FiCheckCircle className="bs-input-valid" />}
+              </div>
+            </div>
+
+            {/* Webhook Secret */}
+            <div className="bs-form-field">
+              <label className="bs-label">
+                <span className="bs-label-dot bs-dot-purple"></span>
+                Webhook Secret
+              </label>
+              <div className="bs-key-display">
+                <div className="bs-key-header">
+                  <div className="bs-key-label">
+                    <FiShield size={11} /> SIGNATURE SECRET
+                  </div>
+                  <button className="bs-key-toggle" onClick={() => setShowSecret(s => !s)}>
+                    {showSecret ? 'Hide' : 'Reveal'}
+                  </button>
+                </div>
+                <div className="bs-key-body">
+                  <code className="bs-key-value">
+                    {showSecret ? (webhookSecret || 'No active secret') : maskedSecret}
+                  </code>
+                  <button
+                    className={`bs-copy-btn ${copiedSecret ? 'copied' : ''}`}
+                    onClick={handleCopySecret}
+                    disabled={!webhookSecret}
+                  >
+                    {copiedSecret ? <FiCheck size={14} /> : <FiCopy size={14} />}
+                    {copiedSecret ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div className="bs-key-footer" style={{ marginTop: '10px' }}>
+                <button
+                  className="bs-danger-btn"
+                  onClick={handleResetWebhookSecret}
+                  disabled={resettingSecret}
+                >
+                  {resettingSecret
+                    ? <><FiRefreshCw className="bs-spinner-sm" /> Resetting…</>
+                    : <><FiAlertTriangle size={14} /> Rotate Secret</>
+                  }
+                </button>
+                <span className="bs-danger-note">Rotating requires updating your backend verification logic immediately</span>
               </div>
             </div>
 

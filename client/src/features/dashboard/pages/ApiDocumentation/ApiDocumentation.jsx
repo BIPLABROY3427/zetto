@@ -690,10 +690,12 @@ const ApiDocumentation = () => {
 }`}} />
 
             <h4 className="section-title mt-4">Security (Simple Secret Verification)</h4>
-            <p>
-              To verify the webhook originated from us, we inject your <strong>Webhook Secret</strong> directly into the JSON payload as the <code>secret</code> key.
-              You simply need to check if it matches the secret shown in your Zetto Dashboard.
-            </p>
+              <p className="mt-4">
+                To verify the webhook originated from us, we inject your <strong>Webhook Secret</strong> directly into the JSON payload as the <code>secret</code> key. You can view or reset your Webhook Secret at any time from the <strong>Basic Settings</strong> page.
+              </p>
+              <p>
+                You simply need to check if it matches the secret shown in your Zetto Dashboard.
+              </p>
 
             <h4 className="section-title mt-4">Code Examples (Verification)</h4>
             <MultiLangCodeBlock id="webhook-verify" snippets={webhookSnippets} />
