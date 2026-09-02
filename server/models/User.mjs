@@ -83,10 +83,10 @@ const userSchema = new mongoose.Schema(
     commission: {
       payin: {
         percent: { type: Number, default: 10 }, // Default 10%
-        flat: { type: Number, default: 0 }     // Default ₹0
+        flat: { type: Number, default: 0 }      // Default ₹0
       },
       payout: {
-        percent: { type: Number, default: 3 }, // Default 3%
+        percent: { type: Number, default: 3 },  // Default 3%
         flat: { type: Number, default: 10 }     // Default ₹10
       }
     }

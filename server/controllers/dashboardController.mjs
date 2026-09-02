@@ -1,9 +1,9 @@
+import axios from 'axios';
 import Transaction from '../models/Transaction.mjs';
 import User from '../models/User.mjs';
+import { logActivity } from '../services/activityLogger.mjs';
 import { queryUpstreamPayIn, queryUpstreamPayOut } from '../services/aeropayService.mjs';
 import { sendWebhookToMerchant } from './gatewayController.mjs';
-import { logActivity } from '../services/activityLogger.mjs';
-import axios from 'axios';
 
 /**
  * @desc    Get dashboard aggregated stats and chart data
@@ -103,8 +103,8 @@ export const getDashboardStats = async (req, res) => {
       },
       settings: {
         commission: merchant.commission || {
-          payin: { percent: 7, flat: 0 },
-          payout: { percent: 3, flat: 6 }
+          payin: { percent: 10, flat: 0 },
+          payout: { percent: 3, flat: 10 }
         },
         commissionRate: merchant.commissionRate || 0.05,
         callbackUrl: merchant.callbackUrl || '',
@@ -224,52 +224,52 @@ export const resendWebhook = async (req, res) => {
 
     // Prepare payload
     const payload = {
-        transactionId: transaction.transactionId,
-        status: transaction.status,
-        amount: transaction.amount,
-        type: transaction.type,
-        timestamp: new Date().toISOString()
+      transactionId: transaction.transactionId,
+      status: transaction.status,
+      amount: transaction.amount,
+      type: transaction.type,
+      timestamp: new Date().toISOString()
     };
-    
+
     const finalPayload = {
-        ...payload,
-        secret: merchant.webhookSecret || 'default_secret'
+      ...payload,
+      secret: merchant.webhookSecret || 'default_secret'
     };
 
     let webhookResponseData = null;
     let isSuccess = false;
 
     try {
-        const response = await axios.post(merchant.callbackUrl, finalPayload, { timeout: 5000 });
-        webhookResponseData = response.data;
-        isSuccess = true;
+      const response = await axios.post(merchant.callbackUrl, finalPayload, { timeout: 5000 });
+      webhookResponseData = response.data;
+      isSuccess = true;
     } catch (error) {
-        webhookResponseData = error.response?.data || error.message;
-        isSuccess = false;
+      webhookResponseData = error.response?.data || error.message;
+      isSuccess = false;
     }
 
     // If it was already sent successfully before, we DO NOT change the DB status.
     // "succes wala pending nahe hosakte", "agr sent hogaya tho ow change nahe hoga"
     if (transaction.webhookStatus !== 'sent') {
-        transaction.webhookStatus = isSuccess ? 'sent' : 'failed';
-        transaction.webhookResponse = webhookResponseData;
-        await transaction.save();
+      transaction.webhookStatus = isSuccess ? 'sent' : 'failed';
+      transaction.webhookResponse = webhookResponseData;
+      await transaction.save();
     }
 
     if (isSuccess) {
-        return res.status(200).json({
-            success: true,
-            message: 'Webhook sent successfully!',
-            webhookStatus: transaction.webhookStatus,
-            webhookResponse: webhookResponseData
-        });
+      return res.status(200).json({
+        success: true,
+        message: 'Webhook sent successfully!',
+        webhookStatus: transaction.webhookStatus,
+        webhookResponse: webhookResponseData
+      });
     } else {
-        return res.status(400).json({
-            success: false,
-            message: `Webhook failed: ${JSON.stringify(webhookResponseData)}`,
-            webhookStatus: transaction.webhookStatus,
-            webhookResponse: webhookResponseData
-        });
+      return res.status(400).json({
+        success: false,
+        message: `Webhook failed: ${JSON.stringify(webhookResponseData)}`,
+        webhookStatus: transaction.webhookStatus,
+        webhookResponse: webhookResponseData
+      });
     }
   } catch (error) {
     console.error('Resend Webhook Error:', error);
@@ -706,7 +706,7 @@ export const getKLineData = async (req, res) => {
 export const cancelPayoutQueue = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const transaction = await Transaction.findById(id).populate('merchantId', 'name email callbackUrl webhookSecret');
     if (!transaction) {
       return res.status(404).json({ success: false, message: 'Transaction not found' });

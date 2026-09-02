@@ -74,7 +74,7 @@ export const createPaymentIntent = async (req, res) => {
         const orderNo = `PAY_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
         // Calculate commission (Percentage + Flat)
-        const payinSettings = merchant.commission?.payin || { percent: 7, flat: 0 };
+        const payinSettings = merchant.commission?.payin || { percent: 10, flat: 0 };
         const commissionAmount = (amount * (payinSettings.percent / 100)) + payinSettings.flat;
         const netAmount = amount - commissionAmount;
 
@@ -219,7 +219,7 @@ export const createPayoutIntent = async (req, res) => {
         }
 
         // Calculate commission (Percentage + Flat)
-        const payoutSettings = merchant.commission?.payout || { percent: 3, flat: 6 };
+        const payoutSettings = merchant.commission?.payout || { percent: 3, flat: 10 };
         const payoutFee = (Number(amount) * (payoutSettings.percent / 100)) + payoutSettings.flat;
         const totalDeduction = Number(amount) + payoutFee;
 
