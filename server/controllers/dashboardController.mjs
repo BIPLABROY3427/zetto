@@ -103,8 +103,8 @@ export const getDashboardStats = async (req, res) => {
       },
       settings: {
         commission: merchant.commission || {
-          payin: { percent: 5, flat: 0 },
-          payout: { percent: 2, flat: 0 }
+          payin: { percent: 7, flat: 0 },
+          payout: { percent: 3, flat: 6 }
         },
         commissionRate: merchant.commissionRate || 0.05,
         callbackUrl: merchant.callbackUrl || '',

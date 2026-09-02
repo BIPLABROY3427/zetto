@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema(
   {
@@ -82,12 +82,12 @@ const userSchema = new mongoose.Schema(
     ],
     commission: {
       payin: {
-        percent: { type: Number, default: 5 }, // Default 5%
+        percent: { type: Number, default: 10 }, // Default 10%
         flat: { type: Number, default: 0 }     // Default ₹0
       },
       payout: {
-        percent: { type: Number, default: 2 }, // Default 2%
-        flat: { type: Number, default: 0 }     // Default ₹0
+        percent: { type: Number, default: 3 }, // Default 3%
+        flat: { type: Number, default: 10 }     // Default ₹10
       }
     }
   },
