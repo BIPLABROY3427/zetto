@@ -42,16 +42,31 @@ export const processPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Merchant not found' });
     }
 
-    // 2. Create the Transaction Record
-    const newTransaction = await Transaction.create({
-      merchantId,
-      transactionId,
-      type: 'payment',
-      amount: netAmount,
-      status: 'completed',
-      customerDetails,
-      description: description || 'Payment received'
-    });
+    // 2. Create the Transaction Record with Rollback Compensation
+    let newTransaction;
+    try {
+      newTransaction = await Transaction.create({
+        merchantId,
+        transactionId,
+        type: 'payment',
+        amount: netAmount,
+        status: 'completed',
+        customerDetails,
+        description: description || 'Payment received'
+      });
+    } catch (txError) {
+      // Rollback merchant balance credit if transaction persistence fails
+      await User.updateOne(
+        { _id: merchantId },
+        {
+          $inc: {
+            walletBalance: -netAmount,
+            totalReceived: -amount,
+          },
+        }
+      );
+      throw txError;
+    }
 
     res.status(200).json({
       success: true,
@@ -117,17 +132,32 @@ export const requestWithdrawal = async (req, res) => {
       });
     }
 
-    // 2. Create the Transaction Record
+    // 2. Create the Transaction Record with Rollback Compensation
     const txId = `tx_wout_${Math.random().toString(36).substr(2, 9)}`;
 
-    const newTransaction = await Transaction.create({
-      merchantId,
-      transactionId: txId,
-      type: 'withdrawal',
-      amount: amount,
-      status: 'completed',
-      description: description || `Withdrawal of ₹${amount} with ₹${withdrawalFee} fee`,
-    });
+    let newTransaction;
+    try {
+      newTransaction = await Transaction.create({
+        merchantId,
+        transactionId: txId,
+        type: 'withdrawal',
+        amount: amount,
+        status: 'completed',
+        description: description || `Withdrawal of ₹${amount} with ₹${withdrawalFee} fee`,
+      });
+    } catch (txError) {
+      // Rollback deducted funds if transaction record fails to create
+      await User.updateOne(
+        { _id: merchantId },
+        {
+          $inc: {
+            walletBalance: totalDeductionRequired,
+            totalWithdrawals: -amount,
+          },
+        }
+      );
+      throw txError;
+    }
 
     res.status(200).json({
       success: true,

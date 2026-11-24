@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom';
 import {
   FiArrowRight, FiShield, FiZap, FiCode, FiActivity,
   FiCheckCircle, FiMenu, FiX, FiDollarSign, FiLink,
-  FiRefreshCw, FiBell, FiLock, FiUsers, FiTrendingUp,
-  FiGlobe, FiStar, FiChevronDown
+  FiBell, FiLock, FiUsers, FiGlobe, FiStar, FiChevronDown,
+  FiRefreshCw, FiTrendingUp
 } from 'react-icons/fi';
 import './LandingPage.css';
 
 const FEATURES = [
-  { icon: <FiZap />, color: 'blue', title: 'Instant Settlements', desc: 'Real-time payouts and lightning-fast transaction processing with 99.9% uptime SLA.' },
-  { icon: <FiShield />, color: 'indigo', title: 'Bank-grade Security', desc: 'End-to-end encryption, fraud detection, and PCI-DSS compliance built in from day one.' },
-  { icon: <FiCode />, color: 'cyan', title: 'Developer First API', desc: 'Clean REST APIs, real-time webhooks, and ready-made SDKs to integrate in minutes.' },
-  { icon: <FiActivity />, color: 'blue', title: 'Real-time Analytics', desc: 'Live dashboard with success rates, revenue insights, and transaction monitoring.' },
-  { icon: <FiDollarSign />, color: 'indigo', title: 'Smart Payouts', desc: 'Automated payouts to banks, UPI, and wallets. Bulk transfers with a single API call.' },
-  { icon: <FiLink />, color: 'cyan', title: 'Payment Links & QR', desc: 'Generate shareable payment links and dynamic QR codes — no code required.' },
+  { icon: <FiZap />, title: 'Instant Settlements', desc: 'Real-time payouts and lightning-fast transaction processing with 99.9% uptime SLA.' },
+  { icon: <FiShield />, title: 'Bank-grade Security', desc: 'End-to-end encryption, fraud detection, and PCI-DSS compliance built in from day one.' },
+  { icon: <FiCode />, title: 'Developer First API', desc: 'Clean REST APIs, real-time webhooks, and ready-made SDKs to integrate in minutes.' },
+  { icon: <FiActivity />, title: 'Real-time Analytics', desc: 'Live dashboard with success rates, revenue insights, and transaction monitoring.' },
+  { icon: <FiDollarSign />, title: 'Smart Payouts', desc: 'Automated payouts to banks, UPI, and wallets. Bulk transfers with a single API call.' },
+  { icon: <FiLink />, title: 'Payment Links & QR', desc: 'Generate shareable payment links and dynamic QR codes — no code required.' },
 ];
 
 const REASONS = [
@@ -35,12 +35,12 @@ const STEPS = [
 ];
 
 const INDUSTRIES = [
-  { label: 'E-Commerce', desc: 'Checkout, links & QR for online and omnichannel sales', color: 'bg-ind-1' },
-  { label: 'Education', desc: 'Course fees, admissions & EMI instalments on rails', color: 'bg-ind-2' },
-  { label: 'SaaS & Startups', desc: 'Subscription billing and automated invoicing', color: 'bg-ind-3' },
-  { label: 'Travel & Events', desc: 'Bookings, deposits & on-site collections made simple', color: 'bg-ind-4' },
-  { label: 'Healthcare', desc: 'Clinic fees, lab payments and insurance collections', color: 'bg-ind-5' },
-  { label: 'Logistics', desc: 'COD reconciliation, vendor payouts & fleet settlements', color: 'bg-ind-6' },
+  { label: 'E-Commerce', desc: 'Checkout, links & QR for online and omnichannel sales', icon: '🛒' },
+  { label: 'Education', desc: 'Course fees, admissions & EMI instalments on rails', icon: '🎓' },
+  { label: 'SaaS & Startups', desc: 'Subscription billing and automated invoicing', icon: '💻' },
+  { label: 'Travel & Events', desc: 'Bookings, deposits & on-site collections made simple', icon: '✈️' },
+  { label: 'Healthcare', desc: 'Clinic fees, lab payments and insurance collections', icon: '🏥' },
+  { label: 'Logistics', desc: 'COD reconciliation, vendor payouts & fleet settlements', icon: '🚚' },
 ];
 
 const TESTIMONIALS = [
@@ -58,7 +58,7 @@ const FAQS = [
   { q: 'Do you offer multi-merchant or reseller accounts?', a: 'Yes! Our platform supports multi-merchant management with separate API keys, wallets, and reporting per merchant.' },
 ];
 
-const PARTNERS = ['UPI', 'Visa', 'Mastercard', 'RuPay', 'IMPS', 'NEFT', 'Net Banking', 'Wallets', 'UPI', 'Visa', 'Mastercard', 'RuPay', 'IMPS', 'NEFT', 'Net Banking', 'Wallets'];
+const PARTNERS = ['UPI', 'Visa', 'Mastercard', 'RuPay', 'IMPS', 'NEFT', 'Net Banking', 'Wallets'];
 
 const LandingPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,12 +66,12 @@ const LandingPage = () => {
 
   return (
     <div className="lp-root">
+
       {/* ── Navbar ── */}
       <header className="lp-navbar">
         <div className="lp-nav-inner">
           <Link to="/" className="lp-brand">
-            <div className="lp-brand-icon">Z</div>
-            <span className="lp-brand-name">Zetto<span className="lp-brand-dot">Pay</span></span>
+            <img src="/logo.png" alt="Zetto Pay" className="lp-logo-img" />
           </Link>
           <nav className={`lp-nav-links ${menuOpen ? 'open' : ''}`}>
             <a href="#features" onClick={() => setMenuOpen(false)}>Features</a>
@@ -91,76 +91,92 @@ const LandingPage = () => {
 
       {/* ── Hero ── */}
       <section className="lp-hero">
-        <div className="lp-hero-bg-grid"></div>
-        <div className="lp-hero-glow"></div>
+        <div className="lp-hero-dots"></div>
         <div className="lp-hero-inner">
-          <div className="lp-hero-badge">
-            <span className="lp-badge-dot"></span>
-            Trusted Payment Infrastructure for India
-          </div>
-          <h1 className="lp-hero-title">
-            The Fastest Way to<br />
-            <span className="lp-gradient-text">Accept & Send Payments</span>
-          </h1>
-          <p className="lp-hero-subtitle">
-            Zetto Pay provides a powerful, developer-friendly payment gateway. Integrate payins, payouts, and real-time webhooks with a single API — built for startups and enterprises.
-          </p>
-          <div className="lp-hero-actions">
-            <Link to="/signup" className="lp-btn-primary lp-btn-lg">
-              Start Processing Free <FiArrowRight className="lp-btn-arrow" />
-            </Link>
-            <Link to="/login" className="lp-btn-outline lp-btn-lg">
-              Merchant Login
-            </Link>
-          </div>
-          <div className="lp-hero-trust">
-            {['Instant KYC', 'No Setup Fee', 'Live Webhooks', '24/7 Support'].map(t => (
-              <span key={t} className="lp-trust-chip">
-                <FiCheckCircle className="lp-trust-icon" /> {t}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Dashboard Mockup */}
-        <div className="lp-hero-mockup-wrap">
-          <div className="lp-mockup-glow"></div>
-          <div className="lp-mockup">
-            <div className="lp-mockup-bar">
-              <span className="lp-dot lp-dot-red"></span>
-              <span className="lp-dot lp-dot-yellow"></span>
-              <span className="lp-dot lp-dot-green"></span>
-              <span className="lp-mockup-url">dashboard.zetto.in</span>
+          <div className="lp-hero-left">
+            <div className="lp-hero-badge">
+              <span className="lp-badge-dot"></span>
+              Trusted Payment Infrastructure for India
             </div>
-            <div className="lp-mockup-body">
-              <div className="lp-mockup-sidebar">
-                <div className="lp-sidebar-logo"></div>
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="lp-sidebar-item" style={{opacity: 1 - i * 0.12}}></div>
-                ))}
+            <h1 className="lp-hero-title">
+              The Fastest Way to<br />
+              <span className="lp-accent-text">Accept & Send</span><br />
+              Payments
+            </h1>
+            <p className="lp-hero-subtitle">
+              Zetto Pay provides a powerful, developer-friendly payment gateway. Integrate payins, payouts, and real-time webhooks with a single API — built for startups and enterprises.
+            </p>
+            <div className="lp-hero-actions">
+              <Link to="/signup" className="lp-btn-primary lp-btn-lg">
+                Start Processing Free <FiArrowRight className="lp-btn-arrow" />
+              </Link>
+              <Link to="/login" className="lp-btn-outline lp-btn-lg">
+                Merchant Login
+              </Link>
+            </div>
+            <div className="lp-hero-trust">
+              {['Instant KYC', 'No Setup Fee', 'Live Webhooks', '24/7 Support'].map(t => (
+                <span key={t} className="lp-trust-chip">
+                  <FiCheckCircle className="lp-trust-icon" /> {t}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Dashboard Mockup */}
+          <div className="lp-hero-right">
+            <div className="lp-mockup">
+              <div className="lp-mockup-bar">
+                <span className="lp-dot lp-dot-red"></span>
+                <span className="lp-dot lp-dot-yellow"></span>
+                <span className="lp-dot lp-dot-green"></span>
+                <span className="lp-mockup-url">dashboard.zetto.in</span>
               </div>
-              <div className="lp-mockup-main">
-                <div className="lp-mockup-stat-row">
-                  {['blue','indigo','cyan'].map(c => (
-                    <div key={c} className={`lp-stat-mini lp-stat-${c}`}>
-                      <div className="lp-stat-mini-val"></div>
-                      <div className="lp-stat-mini-lbl"></div>
-                    </div>
+              <div className="lp-mockup-body">
+                <div className="lp-mockup-sidebar">
+                  <div className="lp-sidebar-logo"></div>
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="lp-sidebar-item" style={{opacity: 1 - i * 0.15}}></div>
                   ))}
                 </div>
-                <div className="lp-mockup-chart">
-                  {[40,70,50,90,60,80,55,95].map((h, i) => (
-                    <div key={i} className="lp-chart-bar" style={{ height: `${h}%` }}></div>
-                  ))}
+                <div className="lp-mockup-main">
+                  <div className="lp-mockup-stat-row">
+                    {['a','b','c'].map(c => (
+                      <div key={c} className={`lp-stat-mini lp-stat-${c}`}>
+                        <div className="lp-stat-mini-val"></div>
+                        <div className="lp-stat-mini-lbl"></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="lp-mockup-chart">
+                    {[40,70,50,90,60,80,55,95].map((h, i) => (
+                      <div key={i} className="lp-chart-bar" style={{ height: `${h}%` }}></div>
+                    ))}
+                  </div>
+                  <div className="lp-mockup-table-row">
+                    <div className="lp-table-mock-line"></div>
+                    <div className="lp-table-badge success"></div>
+                  </div>
+                  <div className="lp-mockup-table-row">
+                    <div className="lp-table-mock-line short"></div>
+                    <div className="lp-table-badge pending"></div>
+                  </div>
                 </div>
-                <div className="lp-mockup-table-row">
-                  <div className="lp-table-mock-line"></div>
-                  <div className="lp-table-badge success"></div>
-                </div>
-                <div className="lp-mockup-table-row">
-                  <div className="lp-table-mock-line short"></div>
-                  <div className="lp-table-badge pending"></div>
-                </div>
+              </div>
+            </div>
+            {/* Floating cards */}
+            <div className="lp-float-card lp-float-a">
+              <div className="lp-float-icon success"><FiCheckCircle /></div>
+              <div>
+                <div className="lp-float-title">Payment Received</div>
+                <div className="lp-float-sub">₹25,000 · just now</div>
+              </div>
+            </div>
+            <div className="lp-float-card lp-float-b">
+              <div className="lp-float-icon blue"><FiBell /></div>
+              <div>
+                <div className="lp-float-title">Webhook Delivered</div>
+                <div className="lp-float-sub">Instant callback</div>
               </div>
             </div>
           </div>
@@ -192,7 +208,7 @@ const LandingPage = () => {
         <div className="lp-marquee-outer">
           <div className="lp-marquee-fade lp-marquee-fade-left"></div>
           <div className="lp-marquee-track">
-            {PARTNERS.map((p, i) => (
+            {[...PARTNERS, ...PARTNERS].map((p, i) => (
               <span key={i} className="lp-marquee-chip">{p}</span>
             ))}
           </div>
@@ -210,7 +226,7 @@ const LandingPage = () => {
           </div>
           <div className="lp-features-grid">
             {FEATURES.map(f => (
-              <div key={f.title} className={`lp-feature-card lp-fc-${f.color}`}>
+              <div key={f.title} className="lp-feature-card">
                 <div className="lp-feature-icon">{f.icon}</div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
@@ -236,7 +252,7 @@ const LandingPage = () => {
                   <h3>{s.title}</h3>
                   <p>{s.desc}</p>
                 </div>
-                {i < STEPS.length - 1 && <div className="lp-step-arrow"><FiArrowRight /></div>}
+                {i < STEPS.length - 1 && <div className="lp-step-connector"></div>}
               </div>
             ))}
           </div>
@@ -246,28 +262,28 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── Process Flow: Business → Zetto → Partners ── */}
+      {/* ── Architecture Flow ── */}
       <section className="lp-flow-section">
         <div className="lp-section-inner">
           <div className="lp-section-head">
             <p className="lp-section-kicker">ARCHITECTURE</p>
-            <h2 className="lp-section-title">We build the technology.<br /><span className="lp-gradient-text">You run the business.</span></h2>
+            <h2 className="lp-section-title">We build the technology.<br /><span className="lp-accent-text">You run the business.</span></h2>
             <p className="lp-section-sub">Zetto Pay sits between your application and the payment rails — handling all the complexity so you don't have to.</p>
           </div>
           <div className="lp-flow-row">
-            <div className="lp-flow-box lp-flow-outline">
+            <div className="lp-flow-box">
               <div className="lp-flow-icon"><FiUsers /></div>
               <h4>Your Business</h4>
               <p>Website, app, or ops team collecting payments</p>
             </div>
-            <div className="lp-flow-arrow"><FiArrowRight /><div className="lp-flow-line"></div></div>
+            <div className="lp-flow-arrow"><FiArrowRight /></div>
             <div className="lp-flow-box lp-flow-solid">
-              <div className="lp-brand-icon" style={{margin: '0 auto 0.75rem'}}>Z</div>
+              <img src="/logo.png" alt="Zetto Pay" className="lp-logo-img lp-logo-flow" />
               <h4>Zetto Pay</h4>
               <p>APIs, dashboard, webhooks & integration layer</p>
             </div>
-            <div className="lp-flow-arrow"><FiArrowRight /><div className="lp-flow-line"></div></div>
-            <div className="lp-flow-box lp-flow-outline">
+            <div className="lp-flow-arrow"><FiArrowRight /></div>
+            <div className="lp-flow-box">
               <div className="lp-flow-icon"><FiLock /></div>
               <h4>Payment Rails</h4>
               <p>Secure banking infrastructure for acceptance & settlement</p>
@@ -284,23 +300,16 @@ const LandingPage = () => {
             <h2 className="lp-section-title">Built for every industry</h2>
             <p className="lp-section-sub">From education and healthcare to logistics and D2C — Zetto Pay adapts to how your sector operates.</p>
           </div>
-        </div>
-        <div className="lp-ind-marquee-outer">
-          <div className="lp-ind-marquee-fade lp-ind-fade-left"></div>
-          <div className="lp-ind-marquee-track">
-            {[...INDUSTRIES, ...INDUSTRIES].map((ind, i) => (
-              <div key={i} className={`lp-ind-card ${ind.color}`}>
-                <div className="lp-ind-overlay"></div>
-                <div className="lp-ind-content">
-                  <p className="lp-ind-tag">INDUSTRY</p>
-                  <h3>{ind.label}</h3>
-                  <p>{ind.desc}</p>
-                  <span className="lp-ind-explore">Explore <FiArrowRight /></span>
-                </div>
+          <div className="lp-ind-grid">
+            {INDUSTRIES.map((ind) => (
+              <div key={ind.label} className="lp-ind-card">
+                <div className="lp-ind-icon">{ind.icon}</div>
+                <h3>{ind.label}</h3>
+                <p>{ind.desc}</p>
+                <span className="lp-ind-link">Learn more <FiArrowRight /></span>
               </div>
             ))}
           </div>
-          <div className="lp-ind-marquee-fade lp-ind-fade-right"></div>
         </div>
       </section>
 
@@ -309,7 +318,7 @@ const LandingPage = () => {
         <div className="lp-section-inner lp-dev-inner">
           <div className="lp-dev-text">
             <p className="lp-section-kicker">FOR DEVELOPERS</p>
-            <h2 className="lp-section-title">Integrate in minutes,<br /><span className="lp-gradient-text">not days.</span></h2>
+            <h2 className="lp-section-title">Integrate in minutes,<br /><span className="lp-accent-text">not days.</span></h2>
             <p className="lp-section-sub">Our clean REST API, detailed documentation, and Postman collection make integration a breeze. Test in sandbox, deploy to production.</p>
             <ul className="lp-dev-list">
               <li><FiCheckCircle /> REST API with JSON responses</li>
@@ -380,7 +389,7 @@ const order = await response.json();
                   <div key={i} className="lp-wc-bar" style={{ height: `${h}%` }}></div>
                 ))}
               </div>
-              <div className="lp-wc-growth">↑ 24% this month</div>
+              <div className="lp-wc-growth"><FiTrendingUp /> 24% this month</div>
             </div>
             <div className="lp-why-card lp-why-card-small lp-why-card-a">
               <div className="lp-ws-icon success"><FiCheckCircle /></div>
@@ -430,7 +439,7 @@ const order = await response.json();
         </div>
       </section>
 
-      {/* ── Pricing Teaser ── */}
+      {/* ── Pricing ── */}
       <section className="lp-pricing-teaser">
         <div className="lp-section-inner">
           <div className="lp-section-head">
@@ -439,7 +448,7 @@ const order = await response.json();
             <p className="lp-section-sub">No hidden charges. No monthly minimums. Pay only for successful transactions.</p>
           </div>
           <div className="lp-pricing-grid">
-            <div className="lp-pricing-card">
+            <div className="lp-pricing-card lp-pricing-featured">
               <div className="lp-pricing-badge">Most Popular</div>
               <h3>Payin Gateway</h3>
               <div className="lp-pricing-rate">1.5% <span>per transaction</span></div>
@@ -504,16 +513,16 @@ const order = await response.json();
       {/* ── CTA Banner ── */}
       <section className="lp-cta-banner">
         <div className="lp-cta-inner">
-          <div className="lp-cta-icon-row">
-            <FiGlobe className="lp-cta-icon" />
+          <div className="lp-cta-icon-wrap">
+            <FiGlobe className="lp-cta-globe" />
           </div>
           <h2>Ready to start accepting payments?</h2>
-          <p>Join thousands of merchants who trust Zetto Pay to power their business. No setup fee, no monthly charges.</p>
+          <p>Join thousands of merchants who trust Zetto Pay to power their business.<br />No setup fee, no monthly charges.</p>
           <div className="lp-cta-actions">
-            <Link to="/signup" className="lp-btn-white">
+            <Link to="/signup" className="lp-btn-primary lp-btn-lg">
               Create Free Account <FiArrowRight />
             </Link>
-            <Link to="/login" className="lp-btn-ghost-white">
+            <Link to="/login" className="lp-btn-outline lp-btn-lg">
               Already have an account? Login
             </Link>
           </div>
@@ -524,10 +533,9 @@ const order = await response.json();
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <div className="lp-footer-brand">
-            <div className="lp-brand">
-              <div className="lp-brand-icon sm">Z</div>
-              <span className="lp-brand-name">Zetto<span className="lp-brand-dot">Pay</span></span>
-            </div>
+            <Link to="/" className="lp-brand">
+              <img src="/logo.png" alt="Zetto Pay" className="lp-logo-img lp-logo-footer" />
+            </Link>
             <p>Next-generation payment infrastructure for India's growing businesses. Fast, secure, and developer-first.</p>
             <div className="lp-footer-contact">
               <a href="mailto:support@zetto.in">support@zetto.in</a>

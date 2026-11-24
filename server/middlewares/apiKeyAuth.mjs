@@ -18,6 +18,11 @@ export const apiKeyAuth = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid or inactive API Key' });
     }
 
+    // ─── SECURITY: Block deactivated/banned merchants ────────────────────────
+    if (merchant.isActive === false) {
+      return res.status(403).json({ success: false, message: 'Merchant account is deactivated. Contact support.' });
+    }
+
     // Attach user payload to req object for controllers to use downstream
     req.user = merchant;
     next();

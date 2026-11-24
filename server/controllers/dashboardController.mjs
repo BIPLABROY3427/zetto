@@ -233,7 +233,7 @@ export const resendWebhook = async (req, res) => {
 
     const finalPayload = {
       ...payload,
-      secret: merchant.webhookSecret || 'default_secret'
+      secret: merchant.webhookSecret || undefined
     };
 
     let webhookResponseData = null;
@@ -581,35 +581,45 @@ export const syncTransactionStatus = async (req, res) => {
 
     // Process based on new order state (1: Success, 2/4: Failed)
     if (newOrderState === '1') {
-      transaction.status = 'completed';
+      const updatedTx = await Transaction.findOneAndUpdate(
+        { _id: transaction._id, status: { $ne: 'completed' } },
+        { $set: { status: 'completed', gatewayResponse: upstreamStatus } },
+        { new: true }
+      );
 
-      if (transaction.type === 'payment') {
-        await User.findOneAndUpdate(
-          { _id: transaction.merchantId },
-          { $inc: { walletBalance: transaction.amount - (transaction.commissionAmount || 0), totalReceived: Number(actualAmount || transaction.amount) } }
-        );
+      if (updatedTx) {
+        if (updatedTx.type === 'payment') {
+          await User.findOneAndUpdate(
+            { _id: updatedTx.merchantId },
+            { $inc: { walletBalance: updatedTx.amount - (updatedTx.commissionAmount || 0), totalReceived: Number(actualAmount || updatedTx.amount) } }
+          );
+        }
+        // For payout success, wallet is already deducted, no balance change needed
+
+        const merchant = await User.findById(updatedTx.merchantId);
+        if (merchant) sendWebhookToMerchant(merchant, updatedTx);
       }
-      // For payout success, wallet is already deducted, no balance change needed
-
-      await transaction.save();
-      const merchant = await User.findById(transaction.merchantId);
-      if (merchant) sendWebhookToMerchant(merchant, transaction);
 
       return res.status(200).json({ success: true, message: 'Transaction marked as completed and wallet updated.' });
     } else if (newOrderState === '2' || newOrderState === '4') {
-      transaction.status = 'failed';
+      const updatedTx = await Transaction.findOneAndUpdate(
+        { _id: transaction._id, status: { $nin: ['completed', 'failed', 'refunded'] } },
+        { $set: { status: 'failed', gatewayResponse: upstreamStatus } },
+        { new: true }
+      );
 
-      if (transaction.type === 'withdrawal') {
-        const refundAmount = transaction.amount + (transaction.commissionAmount || 0);
-        await User.findOneAndUpdate(
-          { _id: transaction.merchantId },
-          { $inc: { walletBalance: refundAmount, totalWithdrawals: -transaction.amount } }
-        );
+      if (updatedTx) {
+        if (updatedTx.type === 'withdrawal') {
+          const refundAmount = updatedTx.amount + (updatedTx.commissionAmount || 0);
+          await User.findOneAndUpdate(
+            { _id: updatedTx.merchantId },
+            { $inc: { walletBalance: refundAmount, totalWithdrawals: -updatedTx.amount } }
+          );
+        }
+
+        const merchant = await User.findById(updatedTx.merchantId);
+        if (merchant) sendWebhookToMerchant(merchant, updatedTx);
       }
-
-      await transaction.save();
-      const merchant = await User.findById(transaction.merchantId);
-      if (merchant) sendWebhookToMerchant(merchant, transaction);
 
       return res.status(200).json({ success: true, message: 'Transaction marked as failed.' });
     }
@@ -707,16 +717,15 @@ export const cancelPayoutQueue = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const transaction = await Transaction.findById(id).populate('merchantId', 'name email callbackUrl webhookSecret');
-    if (!transaction) {
-      return res.status(404).json({ success: false, message: 'Transaction not found' });
-    }
+    // Atomically lock the transaction to prevent double-cancel race condition
+    const transaction = await Transaction.findOneAndUpdate(
+      { _id: id, type: 'withdrawal', status: { $in: ['pending', 'queued'] } },
+      { $set: { status: 'failed', description: 'Cancelled by Admin' } },
+      { new: true }
+    ).populate('merchantId', 'name email callbackUrl webhookSecret');
 
-    if (transaction.type !== 'withdrawal') {
-      return res.status(400).json({ success: false, message: 'Only payout (withdrawal) transactions can be cancelled' });
-    }
-    if (transaction.status !== 'pending' && transaction.status !== 'queued') {
-      return res.status(400).json({ success: false, message: `Cannot cancel transaction with status: ${transaction.status}` });
+    if (!transaction) {
+      return res.status(404).json({ success: false, message: 'Transaction not found or is not in a cancellable state.' });
     }
 
     const refundAmount = transaction.amount + (transaction.commissionAmount || 0);
@@ -725,10 +734,6 @@ export const cancelPayoutQueue = async (req, res) => {
       { $inc: { walletBalance: refundAmount, totalWithdrawals: -transaction.amount } },
       { new: true }
     );
-
-    transaction.status = 'failed';
-    transaction.description = 'Cancelled by Admin';
-    await transaction.save();
 
     if (merchant) {
       sendWebhookToMerchant(merchant, transaction);

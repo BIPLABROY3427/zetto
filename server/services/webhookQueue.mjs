@@ -14,7 +14,7 @@ const connection = new IORedis(process.env.REDIS_URL, {
 
 export const webhookQueue = new Queue('webhook-queue', { connection });
 
-const worker = new Worker('webhook-queue', async (job) => {
+export const webhookWorker = new Worker('webhook-queue', async (job) => {
     const { transactionId, merchantId, payload, attempt } = job.data;
     
     // Fetch merchant details to get callback URL and secret
@@ -27,7 +27,7 @@ const worker = new Worker('webhook-queue', async (job) => {
     // instead of using HMAC signature, making it easier for freshers.
     const finalPayload = {
         ...payload,
-        secret: merchant.webhookSecret || 'default_secret'
+        secret: merchant.webhookSecret || undefined
     };
 
     try {

@@ -6,6 +6,12 @@ import { apiKeyAuth } from "../middlewares/apiKeyAuth.mjs";
 const router = express.Router();
 
 router.post("/create", apiKeyAuth, createOrder);
-router.post("/simulate-payment", simulatePaymentCompletion);
+
+// ─── SECURITY: simulate-payment is a test-only endpoint ──────────────────────
+// Double-guarded: route level + controller level.
+// In production this route is completely blocked at the route layer itself.
+if (process.env.NODE_ENV !== 'production') {
+  router.post("/simulate-payment", simulatePaymentCompletion);
+}
 
 export default router;

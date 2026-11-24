@@ -23,7 +23,7 @@ export const parentAuth = async (req, res, next) => {
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find the merchant by id
     const merchant = await Merchant.findById(decoded.id);

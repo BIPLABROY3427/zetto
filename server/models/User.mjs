@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: [true, 'Password is required'],
+      select: false, // ─── SECURITY: Never return password hash in queries by default
     },
     role: {
       type: String,
@@ -82,12 +83,12 @@ const userSchema = new mongoose.Schema(
     ],
     commission: {
       payin: {
-        percent: { type: Number, default: 10 }, // Default 10%
-        flat: { type: Number, default: 0 }      // Default ₹0
+        percent: { type: Number, default: 8 }, // Default 8%
+        flat: { type: Number, default: 7 }      // Default ₹7
       },
       payout: {
         percent: { type: Number, default: 3 },  // Default 3%
-        flat: { type: Number, default: 10 }     // Default ₹10
+        flat: { type: Number, default: 7 }     // Default ₹7
       }
     }
   },

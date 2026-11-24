@@ -28,7 +28,7 @@ const transactionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed', 'queued'],
+      enum: ['pending', 'completed', 'failed', 'queued', 'processing', 'refunded'],
       default: 'pending',
     },
     customerDetails: {
@@ -74,6 +74,7 @@ const transactionSchema = new mongoose.Schema(
 transactionSchema.index({ merchantId: 1, createdAt: -1 });
 transactionSchema.index({ merchantId: 1, status: 1 });
 transactionSchema.index({ merchantId: 1, type: 1, createdAt: -1 });
+transactionSchema.index({ type: 1, status: 1, createdAt: 1 });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 export default Transaction;

@@ -6,10 +6,13 @@ import { sendSignupOTP, sendPasswordResetOTP } from '../utils/email.mjs';
 import { logActivity } from '../services/activityLogger.mjs';
 
 const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET || 'secret123', {
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    throw new Error('❌ JWT_SECRET or JWT_REFRESH_SECRET is missing in environment variables');
+  }
+  const accessToken = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: '15m',
   });
-  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET || 'refreshsecret123', {
+  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
     expiresIn: '360d',
   });
   return { accessToken, refreshToken };
@@ -96,8 +99,17 @@ export const verifySignupOtp = async (req, res) => {
 
     const storedData = JSON.parse(storedDataStr);
 
+    // Track OTP attempts to prevent brute-force
+    storedData.attempts = (storedData.attempts || 0) + 1;
+    if (storedData.attempts > 5) {
+      await redisClient.del(`signup:${email}`);
+      return res.status(429).json({ message: 'Too many failed attempts. Please sign up again.' });
+    }
+    // Write updated attempts back
+    await redisClient.setEx(`signup:${email}`, 600, JSON.stringify(storedData));
+
     if (storedData.otp !== otp) {
-      return res.status(400).json({ message: 'Invalid OTP' });
+      return res.status(400).json({ message: `Invalid OTP (${5 - storedData.attempts + 1} attempts remaining)` });
     }
 
     // Check if user somehow was created while waiting for OTP
@@ -146,7 +158,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email }).populate('customRole');
+    const user = await User.findOne({ email }).select('+password').populate('customRole');
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -201,7 +213,7 @@ export const refreshToken = async (req, res) => {
     // Optional: Check if token exists in DB (for tracking compromised tokens)
     const userWithToken = await User.findOne({ refreshTokens: tokenFromRequest });
 
-    jwt.verify(tokenFromRequest, process.env.JWT_REFRESH_SECRET || 'refreshsecret123', async (err, decoded) => {
+    jwt.verify(tokenFromRequest, process.env.JWT_REFRESH_SECRET, async (err, decoded) => {
       if (err) {
         if (userWithToken) {
            // Token compromised or expired, but let's just reject for now
@@ -236,9 +248,15 @@ export const refreshToken = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     const userId = req.user?._id;
+    const { refreshToken: tokenToInvalidate } = req.body;
 
-    // Ideally user sends the refreshToken in headers or body to invalidate it
-    // For simplicity, we just send a success status
+    if (userId && tokenToInvalidate) {
+      // Properly invalidate the specific refresh token from the database
+      await User.findByIdAndUpdate(userId, {
+        $pull: { refreshTokens: tokenToInvalidate }
+      });
+    }
+
     res.status(200).json({ message: 'Logout successful' });
 
     if (userId) {
@@ -287,6 +305,15 @@ export const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
+    // Track OTP attempts to prevent brute-force
+    const attemptKey = `reset_attempts:${email}`;
+    const attempts = Number(await redisClient.get(attemptKey) || 0);
+    if (attempts >= 5) {
+      await redisClient.del(`reset:${email}`);
+      await redisClient.del(attemptKey);
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
     const storedOtp = await redisClient.get(`reset:${email}`);
 
     if (!storedOtp) {
@@ -294,6 +321,8 @@ export const resetPassword = async (req, res) => {
     }
 
     if (storedOtp !== otp) {
+      await redisClient.incr(attemptKey);
+      await redisClient.expire(attemptKey, 600);
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 

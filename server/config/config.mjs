@@ -99,11 +99,9 @@ const initConnections = async () => {
     ]);
 };
 
-//Graceful Shutdown
+// Graceful Shutdown Helper
 
-const shutdown = async () => {
-    // console.log('🛑 Gracefully shutting down...');
-
+const closeConnections = async () => {
     try {
         await mongoose.connection.close(false);
 
@@ -111,18 +109,13 @@ const shutdown = async () => {
             await redisClient.quit();
         }
 
-        // console.log('✅ All connections closed');
+        console.log('✅ Database and Redis connections closed');
     } catch (err) {
-        console.error('Shutdown error:', err.message);
+        console.error('Connection close error:', err.message);
     }
-
-    process.exit(0);
 };
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
-
-//Exports
+// Exports
 
 export default initConnections;
-export { redisClient };
+export { redisClient, closeConnections };

@@ -263,10 +263,26 @@ npm install --production
 echo "✅ Backend dependencies installed."
 
 echo ""
-echo "🛑 Stopping old Backend process on port $BACKEND_PORT..."
-fuser -k "$BACKEND_PORT/tcp" || true
-sleep 2
-echo "✅ Backend old process stopped."
+echo "🛑 Gracefully stopping old Backend process on port $BACKEND_PORT..."
+# Send SIGTERM (-15) to allow ongoing payment requests and workers to finish cleanly
+fuser -k -15 "$BACKEND_PORT/tcp" || true
+
+# Wait up to 6 seconds for graceful shutdown
+for i in {1..6}; do
+    if ! fuser "$BACKEND_PORT/tcp" >/dev/null 2>&1; then
+        echo "✅ Backend stopped gracefully."
+        break
+    fi
+    sleep 1
+done
+
+# If still bound to port after timeout, force terminate
+if fuser "$BACKEND_PORT/tcp" >/dev/null 2>&1; then
+    echo "⚠️ Backend still active after 6s. Sending force kill..."
+    fuser -k -9 "$BACKEND_PORT/tcp" || true
+    sleep 1
+fi
+echo "✅ Backend port $BACKEND_PORT is ready."
 
 echo ""
 echo "🚀 Starting Backend..."

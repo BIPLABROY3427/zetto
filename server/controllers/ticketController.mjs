@@ -180,7 +180,16 @@ export const markAsRead = async (req, res) => {
 export const updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const ticket = await Ticket.findByIdAndUpdate(req.params.id, { status }, { new: true });
+
+    // Validate status value to prevent arbitrary data injection
+    const validStatuses = ['open', 'in_progress', 'resolved', 'closed'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ status: false, message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    const ticket = await Ticket.findByIdAndUpdate(req.params.id, { status }, { new: true, runValidators: true });
+    if (!ticket) return res.status(404).json({ status: false, message: 'Ticket not found' });
+
     res.status(200).json({ status: true, ticket });
   } catch (error) {
     res.status(500).json({ status: false, message: 'Server error' });
