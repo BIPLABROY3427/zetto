@@ -7,6 +7,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import helmet from 'helmet';
 import http from 'http';
 import moment from 'moment-timezone';
+import os from 'os';
 
 import Config, { closeConnections } from './config/config.mjs';
 import apiRoutes from './routes/Routes.mjs';
