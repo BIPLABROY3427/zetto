@@ -412,6 +412,7 @@ export const createPayoutIntent = async (req, res) => {
                 message: 'Payout processing. Awaiting gateway confirmation.',
                 transactionId: orderNo
             });
+        }
     } catch (error) {
         console.error('Create Payout Intent Error:', error);
         res.status(500).json({ success: false, message: 'Failed to create payout' });
