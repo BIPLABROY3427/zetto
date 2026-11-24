@@ -63,10 +63,10 @@ export const webhookWorker = new Worker('webhook-queue', async (job) => {
 });
 
 // Listen to worker events for logging or additional handling
-worker.on('completed', (job) => {
+webhookWorker.on('completed', (job) => {
     console.log(`✅ Webhook Job ${job.id} completed successfully`);
 });
 
-worker.on('failed', (job, err) => {
+webhookWorker.on('failed', (job, err) => {
     console.log(`❌ Webhook Job ${job.id} failed with error: ${err.message}`);
 });
