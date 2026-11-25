@@ -73,7 +73,7 @@ const App = () => {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', height: '100vh', alignItems: 'center', background: '#0f172a', color: '#00d2ff' }}>Loading Zetto.in...</div>}>
+      <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', height: '100vh', alignItems: 'center', background: '#0f172a', color: '#00d2ff' }}>Loading zetto.store...</div>}>
         <Routes>
 
           {/* ================= PUBLIC PATH ================= */}

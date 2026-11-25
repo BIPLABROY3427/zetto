@@ -30,7 +30,7 @@ const AuthBrand = () => (
 
     {/* Footer */}
     <div className="auth-brand-footer">
-      © 2025 Zetto.in &nbsp;·&nbsp; Secured by 256-bit SSL
+      © 2025 zetto.store &nbsp;·&nbsp; Secured by 256-bit SSL
     </div>
   </div>
 );

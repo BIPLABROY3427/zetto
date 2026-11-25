@@ -10,5 +10,8 @@ export default defineConfig({
   ],
   server: {
     allowedHosts: ['client.xbat.in', 'localhost']
+  },
+  build: {
+    target: 'es2020'
   }
 })

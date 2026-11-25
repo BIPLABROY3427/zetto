@@ -130,7 +130,7 @@ const LandingPage = () => {
                 <span className="lp-dot lp-dot-red"></span>
                 <span className="lp-dot lp-dot-yellow"></span>
                 <span className="lp-dot lp-dot-green"></span>
-                <span className="lp-mockup-url">dashboard.zetto.in</span>
+                <span className="lp-mockup-url">dashboard.zetto.store</span>
               </div>
               <div className="lp-mockup-body">
                 <div className="lp-mockup-sidebar">
@@ -339,7 +339,7 @@ const LandingPage = () => {
                 <span className="lp-code-title">create_order.js</span>
               </div>
               <pre className="lp-code-body"><code>{`const response = await fetch(
-  'https://api.zetto.in/api/orders',
+  'https://api.zetto.store/api/orders',
   {
     method: 'POST',
     headers: {
@@ -480,7 +480,7 @@ const order = await response.json();
                 <li><FiCheckCircle /> Custom SLAs & uptime</li>
                 <li><FiCheckCircle /> White-label options</li>
               </ul>
-              <a href="mailto:sales@zetto.in" className="lp-btn-outline" style={{width:'100%', justifyContent:'center', display:'flex'}}>Contact Sales <FiArrowRight /></a>
+              <a href="mailto:sales@zetto.store" className="lp-btn-outline" style={{width:'100%', justifyContent:'center', display:'flex'}}>Contact Sales <FiArrowRight /></a>
             </div>
           </div>
         </div>
@@ -538,7 +538,7 @@ const order = await response.json();
             </Link>
             <p>Next-generation payment infrastructure for India's growing businesses. Fast, secure, and developer-first.</p>
             <div className="lp-footer-contact">
-              <a href="mailto:support@zetto.in">support@zetto.in</a>
+              <a href="mailto:support@zetto.store">support@zetto.store</a>
             </div>
           </div>
           <div className="lp-footer-col">
@@ -563,7 +563,7 @@ const order = await response.json();
           </div>
           <div className="lp-footer-col">
             <h4>Support</h4>
-            <a href="mailto:support@zetto.in">Contact Us</a>
+            <a href="mailto:support@zetto.store">Contact Us</a>
             <a href="#">Documentation</a>
             <a href="#">API Reference</a>
             <a href="#">Status Page</a>

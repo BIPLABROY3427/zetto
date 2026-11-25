@@ -368,7 +368,7 @@ const ApiDocumentation = () => {
     <div className="api-docs-container">
       <div className="page-header" style={{ marginBottom: '24px' }}>
         <h2><FiCode style={{ marginRight: '8px' }} /> API Documentation</h2>
-        <p style={{ color: '#64748b', marginTop: '8px' }}>Integrate Zetto.in into your application with our powerful REST APIs.</p>
+        <p style={{ color: '#64748b', marginTop: '8px' }}>Integrate zetto.store into your application with our powerful REST APIs.</p>
       </div>
 
       <div className="api-tabs">
@@ -452,7 +452,7 @@ const ApiDocumentation = () => {
               JSON: `{
   "success": true,
   "message": "Payment intent created",
-  "paymentUrl": "https://pay.zetto.in/checkout?token=abcxyz123",
+  "paymentUrl": "https://pay.zetto.store/checkout?token=abcxyz123",
   "transactionId": "PAY_1715423000_xxxxx"
 }`}} />
           </div>
@@ -643,7 +643,7 @@ const ApiDocumentation = () => {
 }`}} />
             </div>
           </div>
-          
+
           {/* Force Bind */}
           <div className="api-card mb-6">
             <div className="api-card-header">

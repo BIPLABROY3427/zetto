@@ -1,10 +1,10 @@
 # Zetto Payment Gateway - API Integration Guide
 
-This document explains how to integrate the Zetto Payment Gateway (Payin & Payout) into your other projects. 
+This document explains how to integrate the Zetto Payment Gateway (Payin & Payout) into your other projects.
 
 ## Base URL & Authentication
 
-**Base URL:** `https://api.zetto.in/api/v1/gateway`
+**Base URL:** `https://api.zetto.store/api/v1/gateway`
 
 All requests to the merchant API require authentication via an API Key.
 
@@ -97,7 +97,7 @@ You can explicitly check the status of any Payin or Payout transaction.
 ```json
 {
   "success": true,
-  "status": "completed", 
+  "status": "completed",
   "amount": 500
 }
 ```

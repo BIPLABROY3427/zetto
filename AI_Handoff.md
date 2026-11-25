@@ -1,12 +1,12 @@
-# Zetto.in (Payment Gateway)
+# zetto.store (Payment Gateway)
 
 ## 🌐 Project Details
 - **Project Name:** Zetto Payment Gateway
-- **Frontend Domain:** Zetto.in
-- **Backend API Domain:** api.zetto.in
+- **Frontend Domain:** zetto.store
+- **Backend API Domain:** api.zetto.store
 - **GitHub Repo:** `https://github.com/BIPLABROY3427/zetto`
 - **Tech Stack:** React (Vite), Node.js, Express, MongoDB, Mongoose, Redis, JWT
-- **Role System:** 
+- **Role System:**
   - **Superadmin:** Full access to commissions, analytics, and merchant management.
   - **Admin:** Support tickets and transaction monitoring.
   - **User (Merchant):** Payment APIs, wallet balance, and payout requests.

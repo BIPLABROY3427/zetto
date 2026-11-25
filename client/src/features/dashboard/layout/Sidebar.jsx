@@ -145,7 +145,7 @@ const Sidebar = ({ isSidebarOpen, isSidebarCollapsed, setIsSidebarOpen }) => {
           {isSidebarCollapsed ? (
             <div className="logo-icon-small">Z</div>
           ) : (
-            <img src="/logo.png" alt="Zetto.in" className="brand-logo-img"
+            <img src="/logo.png" alt="zetto.store" className="brand-logo-img"
               onError={e => { e.target.style.display = 'none'; }}
             />
           )}
