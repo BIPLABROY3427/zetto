@@ -1,11 +1,24 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  FiArrowRight, FiShield, FiZap, FiCode, FiActivity,
-  FiCheckCircle, FiMenu, FiX, FiDollarSign, FiLink,
-  FiBell, FiLock, FiUsers, FiGlobe, FiStar, FiChevronDown,
-  FiRefreshCw, FiTrendingUp
+  FiActivity,
+  FiArrowRight,
+  FiBell,
+  FiCheckCircle,
+  FiChevronDown,
+  FiCode,
+  FiDollarSign,
+  FiGlobe,
+  FiLink,
+  FiLock,
+  FiMenu,
+  FiShield,
+  FiStar,
+  FiTrendingUp,
+  FiUsers,
+  FiX,
+  FiZap
 } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
 const FEATURES = [
@@ -135,13 +148,13 @@ const LandingPage = () => {
               <div className="lp-mockup-body">
                 <div className="lp-mockup-sidebar">
                   <div className="lp-sidebar-logo"></div>
-                  {[1,2,3,4,5].map(i => (
-                    <div key={i} className="lp-sidebar-item" style={{opacity: 1 - i * 0.15}}></div>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="lp-sidebar-item" style={{ opacity: 1 - i * 0.15 }}></div>
                   ))}
                 </div>
                 <div className="lp-mockup-main">
                   <div className="lp-mockup-stat-row">
-                    {['a','b','c'].map(c => (
+                    {['a', 'b', 'c'].map(c => (
                       <div key={c} className={`lp-stat-mini lp-stat-${c}`}>
                         <div className="lp-stat-mini-val"></div>
                         <div className="lp-stat-mini-lbl"></div>
@@ -149,7 +162,7 @@ const LandingPage = () => {
                     ))}
                   </div>
                   <div className="lp-mockup-chart">
-                    {[40,70,50,90,60,80,55,95].map((h, i) => (
+                    {[40, 70, 50, 90, 60, 80, 55, 95].map((h, i) => (
                       <div key={i} className="lp-chart-bar" style={{ height: `${h}%` }}></div>
                     ))}
                   </div>
@@ -367,7 +380,7 @@ const order = await response.json();
         <div className="lp-section-inner lp-why-inner">
           <div className="lp-why-text">
             <p className="lp-section-kicker">WHY ZETTO PAY</p>
-            <h2 className="lp-section-title">Built different.<br/>Designed to win.</h2>
+            <h2 className="lp-section-title">Built different.<br />Designed to win.</h2>
             <p className="lp-section-sub">We've built the infrastructure that lets you focus on your product, not payments.</p>
             <ul className="lp-reasons">
               {REASONS.map(r => (
@@ -385,7 +398,7 @@ const order = await response.json();
               <div className="lp-wc-label">Total Revenue</div>
               <div className="lp-wc-val">₹12,48,500</div>
               <div className="lp-wc-bar-row">
-                {[40,60,50,90,70,85,55,95].map((h, i) => (
+                {[40, 60, 50, 90, 70, 85, 55, 95].map((h, i) => (
                   <div key={i} className="lp-wc-bar" style={{ height: `${h}%` }}></div>
                 ))}
               </div>
@@ -451,14 +464,14 @@ const order = await response.json();
             <div className="lp-pricing-card lp-pricing-featured">
               <div className="lp-pricing-badge">Most Popular</div>
               <h3>Payin Gateway</h3>
-              <div className="lp-pricing-rate">1.5% <span>per transaction</span></div>
+              <div className="lp-pricing-rate">10% <span>per transaction</span></div>
               <ul className="lp-pricing-list">
                 <li><FiCheckCircle /> UPI, Cards, Net Banking</li>
                 <li><FiCheckCircle /> Real-time webhooks</li>
                 <li><FiCheckCircle /> Instant payment links</li>
                 <li><FiCheckCircle /> Settlement in T+1 days</li>
               </ul>
-              <Link to="/signup" className="lp-btn-primary" style={{width:'100%', justifyContent:'center'}}>Get Started <FiArrowRight /></Link>
+              <Link to="/signup" className="lp-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Get Started <FiArrowRight /></Link>
             </div>
             <div className="lp-pricing-card">
               <h3>Smart Payouts</h3>
@@ -469,7 +482,7 @@ const order = await response.json();
                 <li><FiCheckCircle /> API-driven automation</li>
                 <li><FiCheckCircle /> Real-time status updates</li>
               </ul>
-              <Link to="/signup" className="lp-btn-outline" style={{width:'100%', justifyContent:'center'}}>Get Started <FiArrowRight /></Link>
+              <Link to="/signup" className="lp-btn-outline" style={{ width: '100%', justifyContent: 'center' }}>Get Started <FiArrowRight /></Link>
             </div>
             <div className="lp-pricing-card">
               <h3>Enterprise</h3>
@@ -480,7 +493,7 @@ const order = await response.json();
                 <li><FiCheckCircle /> Custom SLAs & uptime</li>
                 <li><FiCheckCircle /> White-label options</li>
               </ul>
-              <a href="mailto:sales@zetto.store" className="lp-btn-outline" style={{width:'100%', justifyContent:'center', display:'flex'}}>Contact Sales <FiArrowRight /></a>
+              <a href="mailto:sales@zetto.store" className="lp-btn-outline" style={{ width: '100%', justifyContent: 'center', display: 'flex' }}>Contact Sales <FiArrowRight /></a>
             </div>
           </div>
         </div>

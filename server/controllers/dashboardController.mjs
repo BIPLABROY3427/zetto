@@ -1,4 +1,5 @@
 import axios from 'axios';
+import mongoose from 'mongoose';
 import Transaction from '../models/Transaction.mjs';
 import User from '../models/User.mjs';
 import { logActivity } from '../services/activityLogger.mjs';
@@ -300,7 +301,12 @@ export const getAllSystemTransactions = async (req, res) => {
     // Exact Match Filters
     if (status !== 'all') query.status = status;
     if (type !== 'all') query.type = type;
-    if (req.query.merchantId) query.merchantId = req.query.merchantId;
+    if (req.query.merchantId && req.query.merchantId !== 'all') {
+      const mId = req.query.merchantId.trim();
+      if (mongoose.Types.ObjectId.isValid(mId) && mId.length === 24) {
+        query.merchantId = new mongoose.Types.ObjectId(mId);
+      }
+    }
 
     // Date Range Filter
     if (startDate || endDate) {
@@ -309,23 +315,38 @@ export const getAllSystemTransactions = async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
 
-    // Search by transactionId, gatewayOrderId, accountNumber, or User details
-    if (search) {
-      const users = await User.find({
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { businessName: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } }
-        ]
-      }).select('_id');
+    // Search by transactionId, gatewayOrderId, accountNumber, Merchant ID, or User details
+    if (search && search.trim() !== '') {
+      const trimmedSearch = search.trim();
+      const isObjectId = mongoose.Types.ObjectId.isValid(trimmedSearch) && trimmedSearch.length === 24;
+
+      const userConditions = [
+        { name: { $regex: trimmedSearch, $options: 'i' } },
+        { businessName: { $regex: trimmedSearch, $options: 'i' } },
+        { email: { $regex: trimmedSearch, $options: 'i' } }
+      ];
+
+      if (isObjectId) {
+        userConditions.push({ _id: new mongoose.Types.ObjectId(trimmedSearch) });
+      }
+
+      const users = await User.find({ $or: userConditions }).select('_id');
       const userIds = users.map(u => u._id);
 
-      query.$or = [
-        { transactionId: { $regex: search, $options: 'i' } },
-        { gatewayOrderId: { $regex: search, $options: 'i' } },
-        { 'customerDetails.accountNumber': { $regex: search, $options: 'i' } },
-        { merchantId: { $in: userIds } }
+      const orConditions = [
+        { transactionId: { $regex: trimmedSearch, $options: 'i' } },
+        { gatewayOrderId: { $regex: trimmedSearch, $options: 'i' } },
+        { 'customerDetails.accountNumber': { $regex: trimmedSearch, $options: 'i' } }
       ];
+
+      if (isObjectId) {
+        orConditions.push({ merchantId: new mongoose.Types.ObjectId(trimmedSearch) });
+      }
+      if (userIds.length > 0) {
+        orConditions.push({ merchantId: { $in: userIds } });
+      }
+
+      query.$or = orConditions;
     }
 
     const sortConfig = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };

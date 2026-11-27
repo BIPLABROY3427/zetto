@@ -16,12 +16,17 @@ export const getAllUsers = async (req, res) => {
     
     const query = {};
     if (search.trim() !== '') {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phoneNumber: { $regex: search, $options: 'i' } },
-        { businessName: { $regex: search, $options: 'i' } }
+      const trimmedSearch = search.trim();
+      const orConditions = [
+        { name: { $regex: trimmedSearch, $options: 'i' } },
+        { email: { $regex: trimmedSearch, $options: 'i' } },
+        { phoneNumber: { $regex: trimmedSearch, $options: 'i' } },
+        { businessName: { $regex: trimmedSearch, $options: 'i' } }
       ];
+      if (mongoose.Types.ObjectId.isValid(trimmedSearch) && trimmedSearch.length === 24) {
+        orConditions.push({ _id: new mongoose.Types.ObjectId(trimmedSearch) });
+      }
+      query.$or = orConditions;
     }
 
     const skipAmount = (parseInt(page) - 1) * parseInt(limit);
@@ -49,6 +54,30 @@ export const getAllUsers = async (req, res) => {
   } catch (error) {
     console.error('Error getting users:', error);
     res.status(500).json({ status: false, message: 'Server error fetching users' });
+  }
+};
+
+// Get single user by ID
+// Accessible by: superadmin, admin
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id) || id.length !== 24) {
+      return res.status(400).json({ status: false, message: 'Invalid User ID format' });
+    }
+
+    const user = await User.findById(id)
+      .select('-password')
+      .populate('customRole');
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ status: true, user });
+  } catch (error) {
+    console.error('Error fetching user by ID:', error);
+    res.status(500).json({ status: false, message: 'Server error fetching user details' });
   }
 };
 

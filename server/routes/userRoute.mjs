@@ -1,5 +1,5 @@
 import express from 'express';
-import { approveKYC, createUser, deleteUser, getAllUsers, getMyProfile, getUserTransactions, rejectKYC, updateAllUsersCommission, updateMyProfile, updateUserPermissions, updateUserRole, uploadKYC } from '../controllers/userController.mjs';
+import { approveKYC, createUser, deleteUser, getAllUsers, getMyProfile, getUserById, getUserTransactions, rejectKYC, updateAllUsersCommission, updateMyProfile, updateUserPermissions, updateUserRole, uploadKYC } from '../controllers/userController.mjs';
 import { requireRole, verifyAuth } from '../middlewares/roleAuth.mjs';
 
 const router = express.Router();
@@ -36,6 +36,9 @@ router.delete('/:id', requireRole('superadmin', 'admin'), deleteUser);
 
 // Get user specific transactions (Superadmin and Admin can view)
 router.get('/:id/transactions', requireRole('superadmin', 'admin'), getUserTransactions);
+
+// Get single user details by ID (Superadmin and Admin can view)
+router.get('/:id', requireRole('superadmin', 'admin'), getUserById);
 
 // Approve KYC (Superadmin & Admin with permission)
 router.put('/:id/kyc/approve', requireRole('superadmin', 'admin'), approveKYC);

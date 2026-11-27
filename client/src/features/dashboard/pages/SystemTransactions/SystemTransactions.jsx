@@ -18,7 +18,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const merchantId = queryParams.get('merchantId');
+  const urlMerchantId = queryParams.get('merchantId') || '';
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,15 +29,43 @@ const SystemTransactions = ({ initialType = 'all' }) => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [pagination, setPagination] = useState(null);
+  const [merchantId, setMerchantId] = useState(urlMerchantId);
+  const [merchantInfo, setMerchantInfo] = useState(null);
   const { confirm, confirmProps } = useConfirm();
 
   useEffect(() => { setType(initialType); }, [initialType]);
 
+  // Keep merchantId state in sync with URL
+  useEffect(() => {
+    setMerchantId(urlMerchantId);
+  }, [urlMerchantId]);
+
+  // Fetch merchant name if merchantId is set
+  useEffect(() => {
+    if (!merchantId) {
+      setMerchantInfo(null);
+      return;
+    }
+    let isMounted = true;
+    api.get(`/users/${merchantId}`)
+      .then(res => {
+        if (isMounted && res.data?.user) {
+          setMerchantInfo(res.data.user);
+        }
+      })
+      .catch(() => {
+        // If user info cannot be loaded, merchantId is still kept
+      });
+    return () => { isMounted = false; };
+  }, [merchantId]);
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const params = { type, search, status, page, limit };
-      if (merchantId) params.merchantId = merchantId;
+      const params = { type, search: search.trim(), status, page, limit };
+      if (merchantId && merchantId.trim() !== '' && merchantId !== 'all') {
+        params.merchantId = merchantId.trim();
+      }
       const res = await api.get('/dashboard/admin/transactions', { params });
 
       setData(res.data.data || []);
@@ -46,9 +74,18 @@ const SystemTransactions = ({ initialType = 'all' }) => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTransactions(); }, [status, type, page, limit]);
+  useEffect(() => {
+    fetchTransactions();
+  }, [status, type, page, limit, merchantId]);
 
   const handleSearch = (e) => { e.preventDefault(); setPage(1); fetchTransactions(); };
+
+  const handleClearMerchantFilter = () => {
+    setMerchantId('');
+    setMerchantInfo(null);
+    setPage(1);
+    navigate(location.pathname);
+  };
 
   const handleResendWebhook = async (id) => {
     try {
@@ -99,7 +136,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
           <div className="st-search-wrap">
             <FiSearch className="st-search-icon" />
             <input type="text" className="pg-input st-search-input"
-              placeholder="Search Order ID, Name, Business..." value={search}
+              placeholder="Search Order ID, Merchant ID, Name, UTR..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
           <select className="pg-select" value={status} onChange={e => setStatus(e.target.value)}>
@@ -118,6 +155,27 @@ const SystemTransactions = ({ initialType = 'all' }) => {
           <button type="button" className="pg-btn pg-btn-secondary" onClick={fetchTransactions}><FiRefreshCw /></button>
         </form>
       </div>
+
+      {merchantId && (
+        <div className="st-active-filter">
+          <span>
+            Filtering by Merchant: <strong>{merchantInfo?.name || merchantInfo?.businessName || merchantId}</strong>
+            {merchantInfo && (
+              <span style={{ opacity: 0.8, marginLeft: '6px' }}>
+                ({merchantInfo.email} · <code>{merchantId}</code>)
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            className="st-clear-filter-btn"
+            onClick={handleClearMerchantFilter}
+            title="Clear Merchant Filter"
+          >
+            <FiX /> Clear Filter
+          </button>
+        </div>
+      )}
 
       <div className="pg-card">
         <div className="pg-card-header">
@@ -148,7 +206,7 @@ const SystemTransactions = ({ initialType = 'all' }) => {
               </thead>
               <tbody>
                 {data.length === 0 ? (
-                  <tr><td colSpan="9"><div className="pg-empty"><p>No transactions found</p></div></td></tr>
+                  <tr><td colSpan="10"><div className="pg-empty"><p>No transactions found</p></div></td></tr>
                 ) : data.map(tx => (
                   <tr key={tx._id}>
                     <td>

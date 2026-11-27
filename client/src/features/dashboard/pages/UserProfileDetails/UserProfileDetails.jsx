@@ -33,12 +33,33 @@ const UserProfileDetails = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const usersRes = await api.get('/users');
-        const found = usersRes.data.users.find(u => u._id === id);
-        if (!found) { toast.error('User not found'); return; }
-        setUser(found);
-      } catch { toast.error('Failed to load user details'); }
-      finally { setLoading(false); }
+        // Direct endpoint for specific user
+        const res = await api.get(`/users/${id}`);
+        if (res.data?.user) {
+          setUser(res.data.user);
+          return;
+        }
+        if (res.data?.data) {
+          setUser(res.data.data);
+          return;
+        }
+        toast.error('User not found');
+      } catch (err) {
+        // Fallback for older server versions or search lookup
+        try {
+          const usersRes = await api.get('/users', { params: { search: id } });
+          const found = usersRes.data?.users?.find(u => u._id === id);
+          if (found) {
+            setUser(found);
+            return;
+          }
+        } catch {
+          // ignore fallback error
+        }
+        toast.error(err.response?.data?.message || 'Failed to load user details');
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [id]);
@@ -176,12 +197,21 @@ const UserProfileDetails = () => {
 
       {/* Transactions Table */}
       <div className="pg-card">
-        <div className="pg-card-header">
+        <div className="pg-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h4 className="pg-card-title">
             <span className="pg-card-title-icon"><FiArrowDownLeft /></span>
             Recent Transactions
           </h4>
-          <span className="tk-count">{pagination?.totalRecords || transactions.length} records</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              className="pg-btn pg-btn-secondary pg-btn-sm"
+              onClick={() => navigate(`/dashboard/system-transactions?merchantId=${user._id}`)}
+            >
+              View in System Transactions ↗
+            </button>
+            <span className="tk-count">{pagination?.totalRecords || transactions.length} records</span>
+          </div>
         </div>
         <div className="pg-table-wrap">
           {transactions.length === 0 ? (
